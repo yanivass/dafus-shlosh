@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dafus-shlosh-v1';
+const CACHE_NAME = 'dafus-shlosh-v2';
 const urlsToCache = [
   '/dafus-shlosh/',
   '/dafus-shlosh/index.html',
