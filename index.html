@@ -3992,22 +3992,59 @@
     let driveSyncQuotesTimeout = null;
 
     function driveSignIn() {
-        const client = google.accounts.oauth2.initTokenClient({
-            client_id: DRIVE_CONFIG.clientId,
-            scope: DRIVE_CONFIG.scope,
-            callback: async (response) => {
-                if (response.error) {
-                    setDriveStatus('❌ שגיאה בכניסה', '#f87171');
-                    return;
+        const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            // מובייל – שיטת redirect
+            const params = new URLSearchParams({
+                client_id: DRIVE_CONFIG.clientId,
+                redirect_uri: window.location.origin + window.location.pathname,
+                response_type: 'token',
+                scope: DRIVE_CONFIG.scope,
+                include_granted_scopes: 'true'
+            });
+            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+        } else {
+            // מחשב – שיטת popup
+            const client = google.accounts.oauth2.initTokenClient({
+                client_id: DRIVE_CONFIG.clientId,
+                scope: DRIVE_CONFIG.scope,
+                callback: async (response) => {
+                    if (response.error) {
+                        setDriveStatus('❌ שגיאה בכניסה', '#f87171');
+                        return;
+                    }
+                    driveAccessToken = response.access_token;
+                    sessionStorage.setItem('driveToken', driveAccessToken);
+                    setDriveStatus('🔄 מחפש קובץ...', '#fbbf24');
+                    await driveInit();
                 }
-                driveAccessToken = response.access_token;
-                sessionStorage.setItem('driveToken', driveAccessToken);
-                setDriveStatus('🔄 מחפש קובץ...', '#fbbf24');
-                await driveInit();
-            }
-        });
-        client.requestAccessToken();
+            });
+            client.requestAccessToken();
+        }
     }
+
+    // בדוק אם חזרנו מ-redirect של Google
+    (function checkOAuthRedirect() {
+        const hash = window.location.hash;
+        if (hash.includes('access_token')) {
+            const params = new URLSearchParams(hash.substring(1));
+            const token = params.get('access_token');
+            if (token) {
+                driveAccessToken = token;
+                sessionStorage.setItem('driveToken', token);
+                // נקה את ה-hash מה-URL
+                history.replaceState(null, '', window.location.pathname);
+                // המתן לטעינת הדף ואז התחבר
+                window.addEventListener('load', async () => {
+                    setDriveStatus('🔄 מתחבר...', '#fbbf24');
+                    const badge = document.getElementById('role-badge');
+                    if (badge) badge.style.display = 'flex';
+                    await driveInit();
+                });
+            }
+        }
+    })();
 
     async function driveInit() {
         try {
