@@ -3961,14 +3961,15 @@
     function loadQuote(id) {
         const q = savedQuotes.find(q => q.id === id);
         if (!q) return;
-        if (!confirm(`לטעון את הצעה ${q.num} עבור ${q.name}?\nהצעה נוכחית תאבד.`)) return;
+        if (!confirm(`לטעון הצעה ${q.num} עבור ${q.name}?`)) return;
 
         document.getElementById('client-name').value = q.name;
-        document.getElementById('client-phone').value = q.phone;
-        document.getElementById('client-date').value = q.date;
+        document.getElementById('client-phone').value = q.phone || '';
+        document.getElementById('client-date').value = q.date || '';
         document.getElementById('quote-results-box').innerHTML = q.quoteHTML;
         syncClientDetails();
-        window.scrollTo(0, 0);
+        // גלול לתחילת הדף
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function deleteQuote(id) {
