@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>דפוס שלוש</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="דפוס שלוש">
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -3974,8 +3979,15 @@
     }
     // ============================================================
 
-    // ============================================================
-    // GOOGLE DRIVE SYNC
+    // רישום Service Worker לPWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/dafus-shlosh/service-worker.js')
+                .catch(err => console.log('SW error:', err));
+        });
+    }
+
+
     // ============================================================
     const DRIVE_CONFIG = {
         apiKey:      'AIzaSyCUtVYY-zCzS3GoffhKAMtUL1BuU-ZJquw',

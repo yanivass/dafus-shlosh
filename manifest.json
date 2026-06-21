@@ -1,0 +1,25 @@
+{
+  "name": "דפוס שלוש – מחירון",
+  "short_name": "דפוס שלוש",
+  "description": "מערכת תמחור והצעות מחיר – דפוס שלוש",
+  "start_url": "/dafus-shlosh/",
+  "scope": "/dafus-shlosh/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#1e293b",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "https://lirp.cdn-website.com/1513145c/dms3rep/multi/opt/%D7%A9%D7%9C%D7%95%D7%A9+%D7%9C%D7%95%D7%92%D7%95+%D7%90%D7%A4%D7%A7%D7%98+%D7%97%D7%93%D7%A9-300w.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://lirp.cdn-website.com/1513145c/dms3rep/multi/opt/%D7%A9%D7%9C%D7%95%D7%A9+%D7%9C%D7%95%D7%92%D7%95+%D7%90%D7%A4%D7%A7%D7%98+%D7%97%D7%93%D7%A9-300w.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
