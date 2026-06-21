@@ -3900,7 +3900,10 @@
             price,
             status: 'pending',
             quoteHTML,
-            items: globalOrderItems.map(i => i.label || i.type || '')
+            globalOrderItems: JSON.parse(JSON.stringify(globalOrderItems)),
+            discountValue: document.getElementById('discount-value').value,
+            discountType: document.getElementById('discount-type').value,
+            discountTiming: document.getElementById('discount-timing').value
         };
 
         savedQuotes.unshift(quote);
@@ -3966,9 +3969,17 @@
         document.getElementById('client-name').value = q.name;
         document.getElementById('client-phone').value = q.phone || '';
         document.getElementById('client-date').value = q.date || '';
-        document.getElementById('quote-results-box').innerHTML = q.quoteHTML;
+
+        // שחזר פריטים
+        if (q.globalOrderItems) {
+            globalOrderItems = JSON.parse(JSON.stringify(q.globalOrderItems));
+        }
+        if (q.discountValue !== undefined) document.getElementById('discount-value').value = q.discountValue;
+        if (q.discountType) document.getElementById('discount-type').value = q.discountType;
+        if (q.discountTiming) document.getElementById('discount-timing').value = q.discountTiming;
+
         syncClientDetails();
-        // גלול לתחילת הדף
+        renderGlobalOrder();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
