@@ -4045,7 +4045,7 @@
                         return;
                     }
                     driveAccessToken = response.access_token;
-                    sessionStorage.setItem('driveToken', driveAccessToken);
+                    localStorage.setItem('driveToken', driveAccessToken);
                     setDriveStatus('🔄 מחפש קובץ...', '#fbbf24');
                     await driveInit();
                 }
@@ -4062,7 +4062,7 @@
             const token = params.get('access_token');
             if (token) {
                 driveAccessToken = token;
-                sessionStorage.setItem('driveToken', token);
+                localStorage.setItem('driveToken', token);
                 // נקה את ה-hash מה-URL
                 history.replaceState(null, '', window.location.pathname);
                 // המתן לטעינת הדף ואז התחבר
@@ -4292,6 +4292,25 @@
         const savedRole = sessionStorage.getItem('userRole');
         if (savedRole === 'admin' || savedRole === 'worker') {
             enterSystem(savedRole);
+        }
+
+        // נסה להתחבר מחדש ל-Drive אוטומטית
+        const savedToken = localStorage.getItem('driveToken');
+        if (savedToken) {
+            driveAccessToken = savedToken;
+            setTimeout(async () => {
+                setDriveStatus('🔄 מתחבר...', '#fbbf24');
+                try {
+                    await driveInit();
+                } catch(e) {
+                    // Token פג – נקה
+                    localStorage.removeItem('driveToken');
+                    driveAccessToken = null;
+                    setDriveStatus('', '');
+                    const btn = document.getElementById('drive-sync-btn');
+                    if (btn) btn.style.display = '';
+                }
+            }, 500);
         }
     })();
 
