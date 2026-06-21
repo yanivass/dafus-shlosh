@@ -3978,6 +3978,12 @@
         if (q.discountType) document.getElementById('discount-type').value = q.discountType;
         if (q.discountTiming) document.getElementById('discount-timing').value = q.discountTiming;
 
+        // ודא שתיבת התוצאות גלויה
+        const resultsBox = document.getElementById('quote-results-box');
+        const shareButtons = document.querySelector('.share-buttons');
+        if (resultsBox) resultsBox.style.display = '';
+        if (shareButtons) shareButtons.style.display = '';
+
         syncClientDetails();
         renderGlobalOrder();
         window.scrollTo({ top: 0, behavior: 'smooth' });
