@@ -822,6 +822,65 @@
         body.worker-mode #settings-tab-btn { display: none !important; }
         body.worker-mode .result-row.cost { display: none !important; }
 
+        /* === QUOTES HISTORY === */
+        #quotes-history-panel {
+            margin-top: 20px;
+            background: rgba(15,23,42,0.5);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+        .quotes-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .quotes-history-header h3 { margin: 0; font-size: 16px; color: var(--text); }
+        .quote-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .quote-card:hover { border-color: var(--primary); }
+        .quote-card-info { flex: 1; }
+        .quote-card-num { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+        .quote-card-name { font-size: 15px; font-weight: 600; color: var(--text); }
+        .quote-card-meta { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+        .quote-card-price { font-size: 16px; font-weight: 700; color: var(--success); white-space: nowrap; }
+        .quote-status {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+        .status-pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .status-approved { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .status-cancelled { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .quote-card-actions { display: flex; gap: 6px; }
+        .quote-card-actions button {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .quote-card-actions button:hover { border-color: var(--primary); color: var(--primary); }
+        .quote-card-actions .btn-del:hover { border-color: var(--danger); color: var(--danger); }
+
         /* === SCROLLBAR === */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg); }
@@ -1546,6 +1605,18 @@
         <div class="share-buttons" style="justify-content: center;">
             <button class="share-btn share-btn-pdf" onclick="window.print()">📄 PDF / הדפסה</button>
             <button class="share-btn share-btn-whatsapp" id="sharePdfBtn" onclick="sharePdfNative()">📤 שתף כ-PDF</button>
+            <button class="share-btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 8px 20px rgba(34,197,94,0.3);" onclick="saveQuoteToHistory()">💾 שמור הצעה</button>
+        </div>
+
+        <!-- היסטוריית הצעות -->
+        <div id="quotes-history-panel">
+            <div class="quotes-history-header">
+                <h3>📋 היסטוריית הצעות</h3>
+                <span id="quotes-count" style="font-size:12px;color:var(--text-muted);"></span>
+            </div>
+            <div id="quotes-list">
+                <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">אין הצעות שמורות עדיין</div>
+            </div>
         </div>
     </div>
 
@@ -2365,6 +2436,7 @@
         renderCPCustomAddons();
         calculateColorPrint();
         syncClientDetails();
+        loadQuotesFromStorage();
     };
 
     function syncClientDetails() {
@@ -3776,19 +3848,148 @@
     }
 
 
+
+    // ============================================================
+    // היסטוריית הצעות מחיר
+    // ============================================================
+    let savedQuotes = [];
+
+    function loadQuotesFromStorage() {
+        try {
+            savedQuotes = JSON.parse(localStorage.getItem('savedQuotes') || '[]');
+        } catch(e) { savedQuotes = []; }
+        renderQuotesList();
+    }
+
+    function saveQuotesToStorage() {
+        localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
+        scheduleDriveSaveQuotes(); // קובץ הצעות נפרד
+    }
+
+    function generateQuoteNumber() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const existing = savedQuotes.filter(q => q.num && q.num.startsWith(`HZ-${year}`));
+        const next = (existing.length + 1).toString().padStart(3, '0');
+        return `HZ-${year}-${next}`;
+    }
+
+    function saveQuoteToHistory() {
+        const name = document.getElementById('client-name').value || 'לקוח ללא שם';
+        const phone = document.getElementById('client-phone').value || '';
+        const date = document.getElementById('client-date').value || new Date().toISOString().split('T')[0];
+
+        // קבל מחיר סופי
+        const priceEl = document.querySelector('.result-row.total .result-value');
+        const price = priceEl ? priceEl.textContent.trim() : '---';
+
+        // קבל את תוכן ה-HTML של ההצעה
+        const quoteHTML = document.getElementById('quote-results-box').innerHTML;
+
+        const quote = {
+            id: Date.now(),
+            num: generateQuoteNumber(),
+            name,
+            phone,
+            date,
+            price,
+            status: 'pending',
+            quoteHTML,
+            items: globalOrderItems.map(i => i.label || i.type || '')
+        };
+
+        savedQuotes.unshift(quote);
+        saveQuotesToStorage();
+        renderQuotesList();
+
+        // הודעה קצרה
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = '✅ נשמר!';
+        setTimeout(() => btn.textContent = orig, 2000);
+    }
+
+    function renderQuotesList() {
+        const container = document.getElementById('quotes-list');
+        const countEl = document.getElementById('quotes-count');
+        if (!container) return;
+
+        if (savedQuotes.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">אין הצעות שמורות עדיין</div>';
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+
+        if (countEl) countEl.textContent = `${savedQuotes.length} הצעות`;
+
+        container.innerHTML = savedQuotes.map(q => {
+            const statusLabel = { pending: 'ממתין', approved: 'אושר', cancelled: 'בוטל' }[q.status] || 'ממתין';
+            const statusClass = { pending: 'status-pending', approved: 'status-approved', cancelled: 'status-cancelled' }[q.status] || 'status-pending';
+            const dateStr = q.date ? new Date(q.date).toLocaleDateString('he-IL') : '';
+            return `
+            <div class="quote-card" onclick="loadQuote(${q.id})">
+                <div class="quote-card-info">
+                    <div class="quote-card-num">${q.num}</div>
+                    <div class="quote-card-name">${q.name}</div>
+                    <div class="quote-card-meta">${dateStr}${q.phone ? ' · ' + q.phone : ''}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                    <div class="quote-card-price">${q.price}</div>
+                    <select class="quote-status ${statusClass}" onclick="event.stopPropagation()" onchange="changeQuoteStatus(${q.id}, this.value)" style="border:none;cursor:pointer;font-family:inherit;font-weight:600;border-radius:20px;padding:3px 10px;">
+                        <option value="pending" ${q.status==='pending'?'selected':''}>⏳ ממתין</option>
+                        <option value="approved" ${q.status==='approved'?'selected':''}>✅ אושר</option>
+                        <option value="cancelled" ${q.status==='cancelled'?'selected':''}>❌ בוטל</option>
+                    </select>
+                </div>
+                <div class="quote-card-actions" onclick="event.stopPropagation()">
+                    <button onclick="deleteQuote(${q.id})">🗑️</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function changeQuoteStatus(id, status) {
+        const q = savedQuotes.find(q => q.id === id);
+        if (q) { q.status = status; saveQuotesToStorage(); renderQuotesList(); }
+    }
+
+    function loadQuote(id) {
+        const q = savedQuotes.find(q => q.id === id);
+        if (!q) return;
+        if (!confirm(`לטעון את הצעה ${q.num} עבור ${q.name}?\nהצעה נוכחית תאבד.`)) return;
+
+        document.getElementById('client-name').value = q.name;
+        document.getElementById('client-phone').value = q.phone;
+        document.getElementById('client-date').value = q.date;
+        document.getElementById('quote-results-box').innerHTML = q.quoteHTML;
+        syncClientDetails();
+        window.scrollTo(0, 0);
+    }
+
+    function deleteQuote(id) {
+        if (!confirm('למחוק הצעה זו?')) return;
+        savedQuotes = savedQuotes.filter(q => q.id !== id);
+        saveQuotesToStorage();
+        renderQuotesList();
+    }
+    // ============================================================
+
     // ============================================================
     // GOOGLE DRIVE SYNC
     // ============================================================
     const DRIVE_CONFIG = {
-        apiKey:   'AIzaSyCUtVYY-zCzS3GoffhKAMtUL1BuU-ZJquw',
-        clientId: '671012115309-rmblka4r0egl7ir2jj0ccvehmheembbh.apps.googleusercontent.com',
-        fileName: 'dafus_shlosh_settings.json',
-        scope:    'https://www.googleapis.com/auth/drive.file'
+        apiKey:      'AIzaSyCUtVYY-zCzS3GoffhKAMtUL1BuU-ZJquw',
+        clientId:    '671012115309-rmblka4r0egl7ir2jj0ccvehmheembbh.apps.googleusercontent.com',
+        fileName:    'dafus_shlosh_settings.json',
+        quotesFile:  'dafus_shlosh_quotes.json',
+        scope:       'https://www.googleapis.com/auth/drive.file'
     };
 
     let driveAccessToken = null;
     let driveFileId = null;
+    let driveQuotesFileId = null;
     let driveSyncTimeout = null;
+    let driveSyncQuotesTimeout = null;
 
     function driveSignIn() {
         const client = google.accounts.oauth2.initTokenClient({
@@ -3810,7 +4011,7 @@
 
     async function driveInit() {
         try {
-            // חפש קובץ קיים
+            // חפש קובץ הגדרות
             const search = await fetch(
                 `https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_CONFIG.fileName}' and trashed=false&fields=files(id,name)`,
                 { headers: { Authorization: `Bearer ${driveAccessToken}` } }
@@ -3821,10 +4022,24 @@
                 setDriveStatus('🔄 טוען הגדרות...', '#fbbf24');
                 await driveLoad();
             } else {
-                // צור קובץ חדש
-                setDriveStatus('🔄 יוצר קובץ...', '#fbbf24');
+                setDriveStatus('🔄 יוצר קובץ הגדרות...', '#fbbf24');
                 await driveCreateFile();
             }
+
+            // חפש קובץ הצעות
+            const searchQ = await fetch(
+                `https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_CONFIG.quotesFile}' and trashed=false&fields=files(id,name)`,
+                { headers: { Authorization: `Bearer ${driveAccessToken}` } }
+            );
+            const dataQ = await searchQ.json();
+            if (dataQ.files && dataQ.files.length > 0) {
+                driveQuotesFileId = dataQ.files[0].id;
+                setDriveStatus('🔄 טוען הצעות...', '#fbbf24');
+                await driveLoadQuotes();
+            } else {
+                await driveCreateQuotesFile();
+            }
+
             document.getElementById('drive-sync-btn').style.display = 'none';
             setDriveStatus('☁️ מחובר', '#4ade80');
         } catch(e) {
@@ -3881,22 +4096,68 @@
         }, 2000); // שמור 2 שניות אחרי שינוי אחרון
     }
 
+    async function driveCreateQuotesFile() {
+        const blob = new Blob([JSON.stringify([])], {type:'application/json'});
+        const meta = { name: DRIVE_CONFIG.quotesFile, mimeType: 'application/json' };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(meta)], {type:'application/json'}));
+        form.append('file', blob);
+        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${driveAccessToken}` },
+            body: form
+        });
+        const data = await res.json();
+        driveQuotesFileId = data.id;
+    }
+
+    async function driveLoadQuotes() {
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveQuotesFileId}?alt=media`, {
+            headers: { Authorization: `Bearer ${driveAccessToken}` }
+        });
+        const quotes = await res.json();
+        if (Array.isArray(quotes)) {
+            savedQuotes = quotes;
+            localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
+            renderQuotesList();
+        }
+    }
+
+    async function driveSaveQuotes() {
+        if (!driveAccessToken || !driveQuotesFileId) return;
+        const blob = new Blob([JSON.stringify(savedQuotes)], {type:'application/json'});
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveQuotesFileId}?uploadType=media`, {
+            method: 'PATCH',
+            headers: {
+                Authorization: `Bearer ${driveAccessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: blob
+        });
+        setDriveStatus('☁️ נשמר', '#4ade80');
+    }
+
+    function scheduleDriveSaveQuotes() {
+        if (!driveAccessToken || !driveQuotesFileId) return;
+        clearTimeout(driveSyncQuotesTimeout);
+        driveSyncQuotesTimeout = setTimeout(() => driveSaveQuotes(), 2000);
+    }
+
     function collectSettingsForDrive() {
         const data = {};
-        // אסוף את כל מה ש-localStorage מכיל
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
+            if (key === 'savedQuotes') continue; // הצעות בקובץ נפרד
             data[key] = localStorage.getItem(key);
         }
         return data;
     }
 
     function applySettingsFromDrive(settings) {
-        // טען לתוך localStorage ורענן
         for (const [key, val] of Object.entries(settings)) {
+            if (key === 'savedQuotes') continue; // הצעות בקובץ נפרד
             localStorage.setItem(key, val);
         }
-        // רענן את הממשק אם הפונקציה קיימת
         if (typeof syncSettingsToCalc === 'function') syncSettingsToCalc();
         if (typeof renderGlobalOrder === 'function') renderGlobalOrder();
         if (typeof loadSettings === 'function') loadSettings();
