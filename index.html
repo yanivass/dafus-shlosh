@@ -4179,14 +4179,19 @@
     }
 
     async function driveLoadQuotes() {
-        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveQuotesFileId}?alt=media`, {
-            headers: { Authorization: `Bearer ${driveAccessToken}` }
-        });
-        const quotes = await res.json();
-        if (Array.isArray(quotes)) {
-            savedQuotes = quotes;
-            localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
-            renderQuotesList();
+        try {
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveQuotesFileId}?alt=media`, {
+                headers: { Authorization: `Bearer ${driveAccessToken}` }
+            });
+            const quotes = await res.json();
+            console.log('quotes from drive:', quotes);
+            if (Array.isArray(quotes)) {
+                savedQuotes = quotes;
+                localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
+                renderQuotesList();
+            }
+        } catch(e) {
+            console.error('driveLoadQuotes error:', e);
         }
     }
 
