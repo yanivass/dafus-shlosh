@@ -3868,7 +3868,7 @@
 
     function saveQuotesToStorage() {
         localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
-        scheduleDriveSaveQuotes(); // קובץ הצעות נפרד
+        // סנכרון ל-Supabase מתבצע בנפרד לכל פעולה
     }
 
     function generateQuoteNumber() {
@@ -3908,6 +3908,7 @@
 
         savedQuotes.unshift(quote);
         saveQuotesToStorage();
+        sbSaveQuote(quote);
         renderQuotesList();
 
         // הודעה קצרה
@@ -3958,7 +3959,7 @@
 
     function changeQuoteStatus(id, status) {
         const q = savedQuotes.find(q => q.id === id);
-        if (q) { q.status = status; saveQuotesToStorage(); renderQuotesList(); }
+        if (q) { q.status = status; saveQuotesToStorage(); sbUpdateQuoteStatus(id, status); renderQuotesList(); }
     }
 
     function loadQuote(id) {
@@ -3993,6 +3994,7 @@
         if (!confirm('למחוק הצעה זו?')) return;
         savedQuotes = savedQuotes.filter(q => q.id !== id);
         saveQuotesToStorage();
+        sbDeleteQuote(id);
         renderQuotesList();
     }
     // ============================================================
@@ -4007,232 +4009,113 @@
 
 
     // ============================================================
-    const DRIVE_CONFIG = {
-        apiKey:      'AIzaSyCUtVYY-zCzS3GoffhKAMtUL1BuU-ZJquw',
-        clientId:    '671012115309-rmblka4r0egl7ir2jj0ccvehmheembbh.apps.googleusercontent.com',
-        fileName:    'dafus_shlosh_settings.json',
-        quotesFile:  'dafus_shlosh_quotes.json',
-        scope:       'https://www.googleapis.com/auth/drive'
+    // SUPABASE SYNC
+    // ============================================================
+    const SUPABASE_URL = 'https://buojsunvdppbqszrqejn.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1b2pzdW52ZHBwYnFzenJxZWpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMTIyNTMsImV4cCI6MjA5NzY4ODI1M30.oMuwJYMyl67IbZaYEsLTAmfTMqX6Z0-d1D6Ab6njye4';
+
+    const sbHeaders = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
     };
 
-    let driveAccessToken = null;
-    let driveFileId = null;
-    let driveQuotesFileId = null;
-    let driveSyncTimeout = null;
-    let driveSyncQuotesTimeout = null;
+    let sbSyncTimeout = null;
+    let sbQuotesSyncTimeout = null;
 
-    function driveSignIn() {
-        const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-        
-        if (isMobile) {
-            // מובייל – שיטת redirect
-            const params = new URLSearchParams({
-                client_id: DRIVE_CONFIG.clientId,
-                redirect_uri: window.location.origin + window.location.pathname,
-                response_type: 'token',
-                scope: DRIVE_CONFIG.scope,
-                include_granted_scopes: 'true'
+    async function sbLoadSettings() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?id=eq.main&select=data`, {
+                headers: sbHeaders
             });
-            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-        } else {
-            // מחשב – שיטת popup
-            const client = google.accounts.oauth2.initTokenClient({
-                client_id: DRIVE_CONFIG.clientId,
-                scope: DRIVE_CONFIG.scope,
-                callback: async (response) => {
-                    if (response.error) {
-                        setDriveStatus('❌ שגיאה בכניסה', '#f87171');
-                        return;
-                    }
-                    driveAccessToken = response.access_token;
-                    localStorage.setItem('driveToken', driveAccessToken);
-                    setDriveStatus('🔄 מחפש קובץ...', '#fbbf24');
-                    await driveInit();
+            const rows = await res.json();
+            if (rows && rows.length > 0 && rows[0].data) {
+                const settings = rows[0].data;
+                for (const [key, val] of Object.entries(settings)) {
+                    if (key !== 'savedQuotes') localStorage.setItem(key, val);
                 }
-            });
-            client.requestAccessToken();
-        }
+                if (typeof syncSettingsToCalc === 'function') syncSettingsToCalc();
+                if (typeof loadSettings === 'function') loadSettings();
+            }
+        } catch(e) { console.error('sbLoadSettings error:', e); }
     }
 
-    // בדוק אם חזרנו מ-redirect של Google
-    (function checkOAuthRedirect() {
-        const hash = window.location.hash;
-        if (hash.includes('access_token')) {
-            const params = new URLSearchParams(hash.substring(1));
-            const token = params.get('access_token');
-            if (token) {
-                driveAccessToken = token;
-                localStorage.setItem('driveToken', token);
-                // נקה את ה-hash מה-URL
-                history.replaceState(null, '', window.location.pathname);
-                // המתן לטעינת הדף ואז התחבר
-                window.addEventListener('load', async () => {
-                    setDriveStatus('🔄 מתחבר...', '#fbbf24');
-                    const badge = document.getElementById('role-badge');
-                    if (badge) badge.style.display = 'flex';
-                    await driveInit();
-                });
-            }
-        }
-    })();
-
-    async function driveInit() {
+    async function sbSaveSettings() {
         try {
-            // חפש קובץ הגדרות
-            const search = await fetch(
-                `https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_CONFIG.fileName}' and trashed=false&fields=files(id,name)`,
-                { headers: { Authorization: `Bearer ${driveAccessToken}` } }
-            );
-            const data = await search.json();
-            if (data.files && data.files.length > 0) {
-                driveFileId = data.files[0].id;
-                setDriveStatus('🔄 טוען הגדרות...', '#fbbf24');
-                await driveLoad();
-            } else {
-                setDriveStatus('🔄 יוצר קובץ הגדרות...', '#fbbf24');
-                await driveCreateFile();
+            const data = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key !== 'savedQuotes') data[key] = localStorage.getItem(key);
             }
-
-            // חפש קובץ הצעות
-            const searchQ = await fetch(
-                `https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_CONFIG.quotesFile}' and trashed=false&fields=files(id,name)`,
-                { headers: { Authorization: `Bearer ${driveAccessToken}` } }
-            );
-            const dataQ = await searchQ.json();
-            if (dataQ.files && dataQ.files.length > 0) {
-                driveQuotesFileId = dataQ.files[0].id;
-                setDriveStatus('🔄 טוען הצעות...', '#fbbf24');
-                await driveLoadQuotes();
-            } else {
-                await driveCreateQuotesFile();
-            }
-
-            document.getElementById('drive-sync-btn').style.display = 'none';
-            setDriveStatus('☁️ מחובר', '#4ade80');
-        } catch(e) {
-            setDriveStatus('❌ שגיאה', '#f87171');
-            console.error('Drive init error:', e);
-        }
-    }
-
-    async function driveCreateFile() {
-        const settings = collectSettingsForDrive();
-        const blob = new Blob([JSON.stringify(settings)], {type:'application/json'});
-        const meta = { name: DRIVE_CONFIG.fileName, mimeType: 'application/json' };
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(meta)], {type:'application/json'}));
-        form.append('file', blob);
-        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${driveAccessToken}` },
-            body: form
-        });
-        const data = await res.json();
-        driveFileId = data.id;
-    }
-
-    async function driveLoad() {
-        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
-            headers: { Authorization: `Bearer ${driveAccessToken}` }
-        });
-        const settings = await res.json();
-        applySettingsFromDrive(settings);
-        setDriveStatus('☁️ מחובר', '#4ade80');
-    }
-
-    async function driveSave() {
-        if (!driveAccessToken || !driveFileId) return;
-        const settings = collectSettingsForDrive();
-        const blob = new Blob([JSON.stringify(settings)], {type:'application/json'});
-        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
-            method: 'PATCH',
-            headers: {
-                Authorization: `Bearer ${driveAccessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: blob
-        });
-        setDriveStatus('☁️ נשמר', '#4ade80');
-    }
-
-    function scheduleDriveSave() {
-        if (!driveAccessToken || !driveFileId) return;
-        clearTimeout(driveSyncTimeout);
-        driveSyncTimeout = setTimeout(() => {
-            driveSave();
-        }, 2000); // שמור 2 שניות אחרי שינוי אחרון
-    }
-
-    async function driveCreateQuotesFile() {
-        const blob = new Blob([JSON.stringify([])], {type:'application/json'});
-        const meta = { name: DRIVE_CONFIG.quotesFile, mimeType: 'application/json' };
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(meta)], {type:'application/json'}));
-        form.append('file', blob);
-        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${driveAccessToken}` },
-            body: form
-        });
-        const data = await res.json();
-        driveQuotesFileId = data.id;
-    }
-
-    async function driveLoadQuotes() {
-        try {
-            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveQuotesFileId}?alt=media`, {
-                headers: { Authorization: `Bearer ${driveAccessToken}` }
+            await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
+                method: 'POST',
+                headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+                body: JSON.stringify({ id: 'main', data })
             });
-            const quotes = await res.json();
-            console.log('quotes from drive:', quotes);
-            if (Array.isArray(quotes)) {
-                savedQuotes = quotes;
+        } catch(e) { console.error('sbSaveSettings error:', e); }
+    }
+
+    async function sbLoadQuotes() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/quotes?select=*&order=created_at.desc`, {
+                headers: sbHeaders
+            });
+            const rows = await res.json();
+            if (Array.isArray(rows)) {
+                savedQuotes = rows.map(r => ({
+                    id: r.id,
+                    num: r.num,
+                    name: r.name,
+                    phone: r.phone,
+                    date: r.date,
+                    price: r.price,
+                    status: r.status,
+                    ...r.data
+                }));
                 localStorage.setItem('savedQuotes', JSON.stringify(savedQuotes));
                 renderQuotesList();
             }
-        } catch(e) {
-            console.error('driveLoadQuotes error:', e);
-        }
+        } catch(e) { console.error('sbLoadQuotes error:', e); }
     }
 
-    async function driveSaveQuotes() {
-        if (!driveAccessToken || !driveQuotesFileId) return;
-        const blob = new Blob([JSON.stringify(savedQuotes)], {type:'application/json'});
-        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveQuotesFileId}?uploadType=media`, {
-            method: 'PATCH',
-            headers: {
-                Authorization: `Bearer ${driveAccessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: blob
-        });
-        setDriveStatus('☁️ נשמר', '#4ade80');
+    async function sbSaveQuote(quote) {
+        try {
+            const { id, num, name, phone, date, price, status, ...rest } = quote;
+            await fetch(`${SUPABASE_URL}/rest/v1/quotes`, {
+                method: 'POST',
+                headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+                body: JSON.stringify({ id, num, name, phone, date, price, status, data: rest })
+            });
+        } catch(e) { console.error('sbSaveQuote error:', e); }
+    }
+
+    async function sbDeleteQuote(id) {
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/quotes?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: sbHeaders
+            });
+        } catch(e) { console.error('sbDeleteQuote error:', e); }
+    }
+
+    async function sbUpdateQuoteStatus(id, status) {
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/quotes?id=eq.${id}`, {
+                method: 'PATCH',
+                headers: sbHeaders,
+                body: JSON.stringify({ status })
+            });
+        } catch(e) { console.error('sbUpdateQuoteStatus error:', e); }
+    }
+
+    function scheduleDriveSave() {
+        clearTimeout(sbSyncTimeout);
+        sbSyncTimeout = setTimeout(() => sbSaveSettings(), 2000);
     }
 
     function scheduleDriveSaveQuotes() {
-        if (!driveAccessToken || !driveQuotesFileId) return;
-        clearTimeout(driveSyncQuotesTimeout);
-        driveSyncQuotesTimeout = setTimeout(() => driveSaveQuotes(), 2000);
-    }
-
-    function collectSettingsForDrive() {
-        const data = {};
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key === 'savedQuotes') continue; // הצעות בקובץ נפרד
-            data[key] = localStorage.getItem(key);
-        }
-        return data;
-    }
-
-    function applySettingsFromDrive(settings) {
-        for (const [key, val] of Object.entries(settings)) {
-            if (key === 'savedQuotes') continue; // הצעות בקובץ נפרד
-            localStorage.setItem(key, val);
-        }
-        if (typeof syncSettingsToCalc === 'function') syncSettingsToCalc();
-        if (typeof renderGlobalOrder === 'function') renderGlobalOrder();
-        if (typeof loadSettings === 'function') loadSettings();
+        // handled per-operation now
     }
 
     function setDriveStatus(text, color) {
@@ -4240,10 +4123,18 @@
         if (el) { el.textContent = text; el.style.color = color; }
     }
 
-    // עטוף את פונקציית השמירה הקיימת כדי לסנכרן ל-Drive
-    const _origSave = typeof saveSettings === 'function' ? saveSettings : null;
+    // טעינה אוטומטית בפתיחה
+    window.addEventListener('load', async () => {
+        setDriveStatus('🔄 מתחבר...', '#fbbf24');
+        await sbLoadSettings();
+        await sbLoadQuotes();
+        setDriveStatus('☁️ מחובר', '#4ade80');
+        const btn = document.getElementById('drive-sync-btn');
+        if (btn) btn.style.display = 'none';
+    });
 
     // ============================================================
+
 
     // ============================================================
     // PASSWORDS — שנה כאן את הסיסמאות
