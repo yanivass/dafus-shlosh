@@ -4050,8 +4050,9 @@
                 for (const [key, val] of Object.entries(settings)) {
                     if (key !== 'savedQuotes') localStorage.setItem(key, val);
                 }
+                if (typeof loadSettingsFromStorage === 'function') loadSettingsFromStorage();
                 if (typeof syncSettingsToCalc === 'function') syncSettingsToCalc();
-                if (typeof loadSettings === 'function') loadSettings();
+                if (typeof renderGlobalOrder === 'function') renderGlobalOrder();
             }
         } catch(e) { console.error('sbLoadSettings error:', e); }
     }
