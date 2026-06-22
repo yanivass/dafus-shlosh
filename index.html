@@ -4003,7 +4003,8 @@
         const revenue = filtered
             .filter(q => q.status === 'approved')
             .reduce((sum, q) => {
-                const price = parseFloat((q.price || '0').replace(/[^\d.]/g, '')) || 0;
+                const priceStr = (q.price || '0').replace(/[^\d.,]/g, '').replace(',', '.');
+                const price = parseFloat(priceStr) || 0;
                 return sum + price;
             }, 0);
 
