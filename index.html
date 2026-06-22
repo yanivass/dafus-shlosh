@@ -827,6 +827,69 @@
         body.worker-mode #settings-tab-btn { display: none !important; }
         body.worker-mode .result-row.cost { display: none !important; }
 
+        /* === DASHBOARD === */
+        #dashboard-panel {
+            margin-top: 20px;
+            background: rgba(15,23,42,0.5);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+        .dashboard-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 16px;
+        }
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .dashboard-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            text-align: center;
+        }
+        .dashboard-card .dc-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .dashboard-card .dc-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .dashboard-card.green .dc-value { color: var(--success); }
+        .dashboard-card.orange .dc-value { color: #f59e0b; }
+        .dashboard-card.red .dc-value { color: var(--danger); }
+        .dashboard-filter {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .dashboard-filter button {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: none;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .dashboard-filter button.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
         /* === QUOTES HISTORY === */
         #quotes-history-panel {
             margin-top: 20px;
@@ -1610,6 +1673,38 @@
             <button class="share-btn share-btn-pdf" onclick="window.print()">📄 PDF / הדפסה</button>
             <button class="share-btn share-btn-whatsapp" id="sharePdfBtn" onclick="sharePdfNative()">📤 שתף כ-PDF</button>
             <button class="share-btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 8px 20px rgba(34,197,94,0.3);" onclick="saveQuoteToHistory()">💾 שמור הצעה</button>
+        </div>
+
+        <!-- דשבורד -->
+        <div id="dashboard-panel" class="admin-view">
+            <div class="dashboard-title">📊 דשבורד</div>
+            <div class="dashboard-filter">
+                <button class="active" onclick="setDashboardFilter('all', this)">הכל</button>
+                <button onclick="setDashboardFilter('month', this)">החודש</button>
+                <button onclick="setDashboardFilter('week', this)">השבוע</button>
+            </div>
+            <div class="dashboard-cards">
+                <div class="dashboard-card">
+                    <div class="dc-value" id="dash-total">0</div>
+                    <div class="dc-label">סה"כ הצעות</div>
+                </div>
+                <div class="dashboard-card green">
+                    <div class="dc-value" id="dash-approved">0</div>
+                    <div class="dc-label">✅ אושרו</div>
+                </div>
+                <div class="dashboard-card orange">
+                    <div class="dc-value" id="dash-pending">0</div>
+                    <div class="dc-label">⏳ ממתינות</div>
+                </div>
+                <div class="dashboard-card red">
+                    <div class="dc-value" id="dash-cancelled">0</div>
+                    <div class="dc-label">❌ בוטלו</div>
+                </div>
+            </div>
+            <div class="dashboard-card" style="text-align:center;padding:14px;">
+                <div class="dc-value" id="dash-revenue" style="font-size:20px;color:#a78bfa;">₪0</div>
+                <div class="dc-label">מחזור הצעות שאושרו</div>
+            </div>
         </div>
 
         <!-- היסטוריית הצעות -->
@@ -3874,6 +3969,54 @@
 
 
     // ============================================================
+    // דשבורד
+    // ============================================================
+    let dashboardFilter = 'all';
+
+    function setDashboardFilter(filter, btn) {
+        dashboardFilter = filter;
+        document.querySelectorAll('.dashboard-filter button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateDashboard();
+    }
+
+    function updateDashboard() {
+        const now = new Date();
+        const filtered = savedQuotes.filter(q => {
+            if (dashboardFilter === 'all') return true;
+            if (!q.date) return false;
+            const d = new Date(q.date);
+            if (dashboardFilter === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            if (dashboardFilter === 'week') {
+                const diff = (now - d) / (1000 * 60 * 60 * 24);
+                return diff <= 7;
+            }
+            return true;
+        });
+
+        const total = filtered.length;
+        const approved = filtered.filter(q => q.status === 'approved').length;
+        const pending = filtered.filter(q => q.status === 'pending').length;
+        const cancelled = filtered.filter(q => q.status === 'cancelled').length;
+
+        // חשב מחזור מהצעות שאושרו
+        const revenue = filtered
+            .filter(q => q.status === 'approved')
+            .reduce((sum, q) => {
+                const price = parseFloat((q.price || '0').replace(/[^\d.]/g, '')) || 0;
+                return sum + price;
+            }, 0);
+
+        const el = id => document.getElementById(id);
+        if (el('dash-total')) el('dash-total').textContent = total;
+        if (el('dash-approved')) el('dash-approved').textContent = approved;
+        if (el('dash-pending')) el('dash-pending').textContent = pending;
+        if (el('dash-cancelled')) el('dash-cancelled').textContent = cancelled;
+        if (el('dash-revenue')) el('dash-revenue').textContent = `₪${revenue.toLocaleString('he-IL')}`;
+    }
+    // ============================================================
+
+    // ============================================================
     // היסטוריית הצעות מחיר
     // ============================================================
     let savedQuotes = [];
@@ -3960,6 +4103,7 @@
         }
 
         if (countEl) countEl.textContent = `${savedQuotes.length} הצעות`;
+        updateDashboard();
 
         container.innerHTML = quotes.map(q => {
             const statusLabel = { pending: 'ממתין', approved: 'אושר', cancelled: 'בוטל' }[q.status] || 'ממתין';
