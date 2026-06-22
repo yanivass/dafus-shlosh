@@ -1618,6 +1618,11 @@
                 <h3>📋 היסטוריית הצעות</h3>
                 <span id="quotes-count" style="font-size:12px;color:var(--text-muted);"></span>
             </div>
+            <div style="margin-bottom:14px;">
+                <input type="text" id="quotes-search" placeholder="🔍 חיפוש לפי שם לקוח..." 
+                    oninput="filterQuotes(this.value)"
+                    style="width:100%;padding:10px 14px;border:1px solid #334155;border-radius:var(--radius);background:var(--input);color:var(--text);font-size:14px;font-family:inherit;box-sizing:border-box;">
+            </div>
             <div id="quotes-list">
                 <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">אין הצעות שמורות עדיין</div>
             </div>
@@ -3917,12 +3922,23 @@
         setTimeout(() => btn.textContent = orig, 2000);
     }
 
-    function renderQuotesList() {
+    function filterQuotes(query) {
+        const q = query.trim().toLowerCase();
+        const filtered = q ? savedQuotes.filter(quote => 
+            (quote.name || '').toLowerCase().includes(q) ||
+            (quote.phone || '').includes(q) ||
+            (quote.num || '').toLowerCase().includes(q)
+        ) : savedQuotes;
+        renderQuotesList(filtered);
+    }
+
+    function renderQuotesList(quotes) {
+        quotes = quotes || savedQuotes;
         const container = document.getElementById('quotes-list');
         const countEl = document.getElementById('quotes-count');
         if (!container) return;
 
-        if (savedQuotes.length === 0) {
+        if (quotes.length === 0) {
             container.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">אין הצעות שמורות עדיין</div>';
             if (countEl) countEl.textContent = '';
             return;
@@ -3930,7 +3946,7 @@
 
         if (countEl) countEl.textContent = `${savedQuotes.length} הצעות`;
 
-        container.innerHTML = savedQuotes.map(q => {
+        container.innerHTML = quotes.map(q => {
             const statusLabel = { pending: 'ממתין', approved: 'אושר', cancelled: 'בוטל' }[q.status] || 'ממתין';
             const statusClass = { pending: 'status-pending', approved: 'status-approved', cancelled: 'status-cancelled' }[q.status] || 'status-pending';
             const dateStr = q.date ? new Date(q.date).toLocaleDateString('he-IL') : '';
