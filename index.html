@@ -4048,8 +4048,8 @@
         const date = document.getElementById('client-date').value || new Date().toISOString().split('T')[0];
 
         // קבל מחיר סופי
-        const priceEl = document.querySelector('.result-row.total .result-value');
-        const price = priceEl ? priceEl.textContent.trim() : '---';
+        const priceEl = document.getElementById('res-total-retail-total');
+        const price = priceEl ? `₪${priceEl.textContent.trim()}` : '---';
 
         // קבל את תוכן ה-HTML של ההצעה
         const quoteHTML = document.getElementById('quote-results-box').innerHTML;
