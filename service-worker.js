@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dafus-shlosh-v3';
+const CACHE_NAME = 'dafus-shlosh-v4';
 const urlsToCache = [
   '/dafus-shlosh/',
   '/dafus-shlosh/index.html',
@@ -9,19 +9,36 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+    ))
+  );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
+  // דלג על בקשות שאינן http/https
+  if (!event.request.url.startsWith('http')) return;
+  // דלג על בקשות ל-Supabase ולשירותים חיצוניים
+  if (event.request.url.includes('supabase.co') || 
+      event.request.url.includes('googleapis') ||
+      event.request.url.includes('accounts.google')) return;
+
   event.respondWith(
-    caches.match(event.request).then(response => {
-      // אם יש ברשת – קח מהרשת ועדכן cache
-      return fetch(event.request).then(networkResponse => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+    caches.match(event.request).then(cached => {
+      const network = fetch(event.request).then(response => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
-        return networkResponse;
-      }).catch(() => response); // אם אין רשת – קח מה-cache
+        return response;
+      });
+      return cached || network;
     })
   );
 });
