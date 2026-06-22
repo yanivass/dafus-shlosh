@@ -3682,7 +3682,8 @@
             'sett-nb-spiral-cost', 'sett-nb-spiral-retail', 'sett-nb-plastic-cost', 'sett-nb-plastic-retail'
         ];
         notebookIds.forEach(id => {
-            localStorage.setItem(id, document.getElementById(id).value);
+            const el = document.getElementById(id);
+            if (el) localStorage.setItem(id, el.value);
         });
 
         const categories = ['stamps', 'pads', 'ink', 'plates'];
