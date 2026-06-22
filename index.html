@@ -3689,29 +3689,38 @@
         const categories = ['stamps', 'pads', 'ink', 'plates'];
         categories.forEach(cat => {
             stampDatabase[cat].forEach(item => {
-                item.cost = parseFloat(document.getElementById(`sett-cost-${cat}-${item.id}`).value) || item.cost;
-                item.retail = parseFloat(document.getElementById(`sett-retail-${cat}-${item.id}`).value) || item.retail;
+                const costEl = document.getElementById(`sett-cost-${cat}-${item.id}`);
+                const retailEl = document.getElementById(`sett-retail-${cat}-${item.id}`);
+                if (costEl) item.cost = parseFloat(costEl.value) || item.cost;
+                if (retailEl) item.retail = parseFloat(retailEl.value) || item.retail;
             });
         });
         localStorage.setItem('stampDatabase', JSON.stringify(stampDatabase));
 
-        localStorage.setItem('chemClickCost', document.getElementById('sett-chem-click-cost').value);
-        localStorage.setItem('chemManilaCost', document.getElementById('sett-chem-manila-cost').value);
-        localStorage.setItem('chemFixedBinding', document.getElementById('sett-chem-fixed-binding').value);
-        
-        localStorage.setItem('chemCostWhite', document.getElementById('sett-chem-cost-white').value);
-        localStorage.setItem('chemCostYellow', document.getElementById('sett-chem-cost-yellow').value);
-        localStorage.setItem('chemCostPink', document.getElementById('sett-chem-cost-pink').value);
-        localStorage.setItem('chemCostBlue', document.getElementById('sett-chem-cost-blue').value);
-        localStorage.setItem('chemClickCostB4', document.getElementById('sett-chem-click-cost-b4').value);
-        localStorage.setItem('chemCostWhiteB4', document.getElementById('sett-chem-cost-white-b4').value);
-        localStorage.setItem('chemCostYellowB4', document.getElementById('sett-chem-cost-yellow-b4').value);
-        localStorage.setItem('chemCostPinkB4', document.getElementById('sett-chem-cost-pink-b4').value);
-        localStorage.setItem('chemCostBlueB4', document.getElementById('sett-chem-cost-blue-b4').value);
-        localStorage.setItem('chemManilaCostB4', document.getElementById('sett-chem-manila-cost-b4').value);
+        ['sett-chem-click-cost','sett-chem-manila-cost','sett-chem-fixed-binding',
+         'sett-chem-cost-white','sett-chem-cost-yellow','sett-chem-cost-pink','sett-chem-cost-blue',
+         'sett-chem-click-cost-b4','sett-chem-cost-white-b4','sett-chem-cost-yellow-b4',
+         'sett-chem-cost-pink-b4','sett-chem-cost-blue-b4','sett-chem-manila-cost-b4',
+         'sett-chem-staples-roll-cost','sett-chem-glue-5l-cost'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) localStorage.setItem(id.replace('sett-chem-','chem').replace(/-([a-z])/g, (m,c) => c.toUpperCase()), el.value);
+        });
+        localStorage.setItem('chemClickCost', document.getElementById('sett-chem-click-cost')?.value || localStorage.getItem('chemClickCost') || '');
+        localStorage.setItem('chemManilaCost', document.getElementById('sett-chem-manila-cost')?.value || localStorage.getItem('chemManilaCost') || '');
+        localStorage.setItem('chemFixedBinding', document.getElementById('sett-chem-fixed-binding')?.value || localStorage.getItem('chemFixedBinding') || '');
+        localStorage.setItem('chemCostWhite', document.getElementById('sett-chem-cost-white')?.value || localStorage.getItem('chemCostWhite') || '');
+        localStorage.setItem('chemCostYellow', document.getElementById('sett-chem-cost-yellow')?.value || localStorage.getItem('chemCostYellow') || '');
+        localStorage.setItem('chemCostPink', document.getElementById('sett-chem-cost-pink')?.value || localStorage.getItem('chemCostPink') || '');
+        localStorage.setItem('chemCostBlue', document.getElementById('sett-chem-cost-blue')?.value || localStorage.getItem('chemCostBlue') || '');
+        localStorage.setItem('chemClickCostB4', document.getElementById('sett-chem-click-cost-b4')?.value || localStorage.getItem('chemClickCostB4') || '');
+        localStorage.setItem('chemCostWhiteB4', document.getElementById('sett-chem-cost-white-b4')?.value || localStorage.getItem('chemCostWhiteB4') || '');
+        localStorage.setItem('chemCostYellowB4', document.getElementById('sett-chem-cost-yellow-b4')?.value || localStorage.getItem('chemCostYellowB4') || '');
+        localStorage.setItem('chemCostPinkB4', document.getElementById('sett-chem-cost-pink-b4')?.value || localStorage.getItem('chemCostPinkB4') || '');
+        localStorage.setItem('chemCostBlueB4', document.getElementById('sett-chem-cost-blue-b4')?.value || localStorage.getItem('chemCostBlueB4') || '');
+        localStorage.setItem('chemManilaCostB4', document.getElementById('sett-chem-manila-cost-b4')?.value || localStorage.getItem('chemManilaCostB4') || '');
         localStorage.setItem('chemTemplates', JSON.stringify(chemTemplates));
-        localStorage.setItem('chemStaplesRollCost', document.getElementById('sett-chem-staples-roll-cost').value);
-        localStorage.setItem('chemGlue5lCost', document.getElementById('sett-chem-glue-5l-cost').value);
+        localStorage.setItem('chemStaplesRollCost', document.getElementById('sett-chem-staples-roll-cost')?.value || localStorage.getItem('chemStaplesRollCost') || '');
+        localStorage.setItem('chemGlue5lCost', document.getElementById('sett-chem-glue-5l-cost')?.value || localStorage.getItem('chemGlue5lCost') || '');
 
         // הדפסה צבעונית
         localStorage.setItem('cpMaterials', JSON.stringify(cpMaterials));
@@ -3719,9 +3728,9 @@
         ['sett-cp-click-color-a4','sett-cp-click-color-a3','sett-cp-click-bw-a4','sett-cp-click-bw-a3',
          'sett-cp-lam-matte-cost','sett-cp-lam-matte-retail','sett-cp-lam-glossy-cost','sett-cp-lam-glossy-retail',
          'sett-cp-cut-cost','sett-cp-cut-retail','sett-cp-fold-cost','sett-cp-fold-retail',
-         
          'sett-cp-perf-cost','sett-cp-perf-retail'].forEach(id => {
-            localStorage.setItem(id, document.getElementById(id).value);
+            const el = document.getElementById(id);
+            if (el) localStorage.setItem(id, el.value);
         });
 
         alert("המחירונים וההגדרות נשמרו בהצלחה בדפדפן הנוכחי!");
