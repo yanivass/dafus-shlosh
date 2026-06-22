@@ -3651,25 +3651,30 @@
     }
 
     function saveSettings() {
-        localStorage.setItem('vatRate', document.getElementById('vat-rate').value);
+        const vatEl = document.getElementById('vat-rate');
+        if (vatEl) localStorage.setItem('vatRate', vatEl.value);
 
         materialGroups.forEach(group => {
             group.rolls.forEach((roll, idx) => {
                 const inputKey = `${group.id}_${idx}`;
-                roll.length = parseFloat(document.getElementById(`len-${inputKey}`).value) || roll.length;
-                roll.cost = parseFloat(document.getElementById(`cost-${inputKey}`).value) || roll.cost;
-                roll.retailM2 = parseFloat(document.getElementById(`retail-${inputKey}`).value) || roll.retailM2;
+                const lenEl = document.getElementById(`len-${inputKey}`);
+                const costEl = document.getElementById(`cost-${inputKey}`);
+                const retailEl = document.getElementById(`retail-${inputKey}`);
+                if (lenEl) roll.length = parseFloat(lenEl.value) || roll.length;
+                if (costEl) roll.cost = parseFloat(costEl.value) || roll.cost;
+                if (retailEl) roll.retailM2 = parseFloat(retailEl.value) || roll.retailM2;
             });
         });
         localStorage.setItem('materialGroups', JSON.stringify(materialGroups));
-        localStorage.setItem('defaultAlucobondRetail', document.getElementById('setting-default-alucobond-retail').value);
-        localStorage.setItem('defaultPrintingRetail', document.getElementById('setting-default-printing-retail').value);
-        localStorage.setItem('defaultKappaSmall', document.getElementById('setting-default-kappa-small').value);
-        localStorage.setItem('defaultKappaLarge', document.getElementById('setting-default-kappa-large').value);
-        localStorage.setItem('costAlucobond', document.getElementById('setting-cost-alucobond').value);
-        localStorage.setItem('costPrinting', document.getElementById('setting-cost-printing').value);
-        localStorage.setItem('costKappaSmall', document.getElementById('setting-cost-kappa-small').value);
-        localStorage.setItem('costKappaLarge', document.getElementById('setting-cost-kappa-large').value);
+        const getVal = (id) => document.getElementById(id)?.value || localStorage.getItem(id) || '';
+        localStorage.setItem('defaultAlucobondRetail', getVal('setting-default-alucobond-retail'));
+        localStorage.setItem('defaultPrintingRetail', getVal('setting-default-printing-retail'));
+        localStorage.setItem('defaultKappaSmall', getVal('setting-default-kappa-small'));
+        localStorage.setItem('defaultKappaLarge', getVal('setting-default-kappa-large'));
+        localStorage.setItem('costAlucobond', getVal('setting-cost-alucobond'));
+        localStorage.setItem('costPrinting', getVal('setting-cost-printing'));
+        localStorage.setItem('costKappaSmall', getVal('setting-cost-kappa-small'));
+        localStorage.setItem('costKappaLarge', getVal('setting-cost-kappa-large'));
         localStorage.setItem('pvcThicknesses', JSON.stringify(pvcThicknesses));
         localStorage.setItem('perspexThicknesses', JSON.stringify(perspexThicknesses));
         localStorage.setItem('customWideAddons', JSON.stringify(customWideAddons));
@@ -4074,11 +4079,13 @@
                 const key = localStorage.key(i);
                 if (key !== 'savedQuotes') data[key] = localStorage.getItem(key);
             }
-            await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
+            console.log('שולח הגדרות ל-Supabase:', Object.keys(data).length, 'מפתחות');
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
                 method: 'POST',
                 headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
                 body: JSON.stringify({ id: 'main', data })
             });
+            console.log('תגובה מ-Supabase:', res.status, res.statusText);
         } catch(e) { console.error('sbSaveSettings error:', e); }
     }
 
