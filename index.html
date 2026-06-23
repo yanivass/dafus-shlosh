@@ -2190,21 +2190,20 @@
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">הגדר מוצרים קבועים שיופיעו כבחירה מהירה במחשבון</p>
             <div class="table-responsive">
                 <table id="cp-templates-table">
-                    <thead><tr><th>שם מוצר</th><th>גודל דף</th><th>יחידות לגיליון</th><th>הדפסה</th><th>צדדים</th><th></th></tr></thead>
+                    <thead><tr><th>שם מוצר</th><th>גודל דף</th><th>יחידות לגיליון</th><th>הדפסה</th><th>צדדים</th><th>מחיר ליחידה (₪)</th><th>מחיר לגיליון (₪)</th><th></th></tr></thead>
                     <tbody id="cp-templates-tbody"></tbody>
                 </table>
             </div>
             <div class="row" style="margin-top:12px;">
-                <div class="col form-group"><label>שם מוצר:</label><input type="text" id="cp-new-tpl-name" placeholder="לדוגמה: פלייר A5"></div>
+                <div class="col form-group"><label>שם מוצר:</label><input type="text" id="cp-new-tpl-name" placeholder="לדוגמה: מדבקה 5×5"></div>
                 <div class="col form-group">
                     <label>גודל דף:</label>
                     <select id="cp-new-tpl-size">
                         <option value="A4">A4</option>
                         <option value="A3">A3</option>
-                        <option value="custom">מותאם</option>
                     </select>
                 </div>
-                <div class="col form-group"><label>יחידות לגיליון:</label><input type="number" id="cp-new-tpl-persheet" value="2" min="1"></div>
+                <div class="col form-group"><label>יחידות לגיליון:</label><input type="number" id="cp-new-tpl-persheet" value="1" min="1"></div>
                 <div class="col form-group">
                     <label>סוג הדפסה:</label>
                     <select id="cp-new-tpl-printtype">
@@ -2215,10 +2214,12 @@
                 <div class="col form-group">
                     <label>צדדים:</label>
                     <select id="cp-new-tpl-sides">
-                        <option value="double">דו-צדדי</option>
                         <option value="single">חד-צדדי</option>
+                        <option value="double">דו-צדדי</option>
                     </select>
                 </div>
+                <div class="col form-group"><label>מחיר ליחידה (₪):</label><input type="number" id="cp-new-tpl-unit-price" value="0" step="0.01" min="0" placeholder="0 = חישוב אוטומטי"></div>
+                <div class="col form-group"><label>מחיר לגיליון (₪):</label><input type="number" id="cp-new-tpl-sheet-price" value="0" step="0.01" min="0" placeholder="0 = חישוב אוטומטי"></div>
                 <div class="col form-group" style="display:flex;align-items:flex-end;padding-bottom:15px;">
                     <button class="btn" onclick="addCPTemplate()">➕ הוסף תבנית</button>
                 </div>
@@ -2232,11 +2233,11 @@
 
 <script>
     let cpProductTemplates = [
-        { id: 1, name: 'פלייר A5', size: 'A4', perSheet: 2, printType: 'color', sides: 'double', material: '' },
-        { id: 2, name: 'פלייר A6', size: 'A4', perSheet: 4, printType: 'color', sides: 'double', material: '' },
-        { id: 3, name: 'כרטיס ביקור', size: 'A4', perSheet: 8, printType: 'color', sides: 'double', material: '' },
-        { id: 4, name: 'מודעת אבל A4', size: 'A4', perSheet: 1, printType: 'bw', sides: 'single', material: '' },
-        { id: 5, name: 'מודעת אבל A3', size: 'A3', perSheet: 1, printType: 'bw', sides: 'single', material: '' }
+        { id: 1, name: 'פלייר A5', size: 'A4', perSheet: 2, printType: 'color', sides: 'double', unitPrice: 0, sheetPrice: 0 },
+        { id: 2, name: 'פלייר A6', size: 'A4', perSheet: 4, printType: 'color', sides: 'double', unitPrice: 0, sheetPrice: 0 },
+        { id: 3, name: 'כרטיס ביקור', size: 'A4', perSheet: 8, printType: 'color', sides: 'double', unitPrice: 0, sheetPrice: 0 },
+        { id: 4, name: 'מודעת אבל A4', size: 'A4', perSheet: 1, printType: 'bw', sides: 'single', unitPrice: 0, sheetPrice: 0 },
+        { id: 5, name: 'מודעת אבל A3', size: 'A3', perSheet: 1, printType: 'bw', sides: 'single', unitPrice: 0, sheetPrice: 0 }
     ];
 
     let materialGroups = [
@@ -2339,7 +2340,9 @@
                 <td>${t.perSheet}</td>
                 <td>${t.printType === 'color' ? 'צבעוני' : 'שח"ל'}</td>
                 <td>${t.sides === 'double' ? 'דו-צדדי' : 'חד-צדדי'}</td>
-                <td><button class="btn-small btn-danger" onclick="deleteCPTemplate(${t.id})">🗑️</button></td>
+                <td>${t.unitPrice > 0 ? '₪' + t.unitPrice : 'אוטומטי'}</td>
+                <td>${t.sheetPrice > 0 ? '₪' + t.sheetPrice : 'אוטומטי'}</td>
+                <td><button class="btn-danger" onclick="deleteCPTemplate(${t.id})" style="padding:4px 10px;font-size:12px;border:none;border-radius:6px;cursor:pointer;">🗑️</button></td>
             </tr>
         `).join('');
         updateCPTemplateSelect();
@@ -2363,10 +2366,14 @@
             size: document.getElementById('cp-new-tpl-size').value,
             perSheet: parseInt(document.getElementById('cp-new-tpl-persheet').value) || 1,
             printType: document.getElementById('cp-new-tpl-printtype').value,
-            sides: document.getElementById('cp-new-tpl-sides').value
+            sides: document.getElementById('cp-new-tpl-sides').value,
+            unitPrice: parseFloat(document.getElementById('cp-new-tpl-unit-price').value) || 0,
+            sheetPrice: parseFloat(document.getElementById('cp-new-tpl-sheet-price').value) || 0
         };
         cpProductTemplates.push(tpl);
         document.getElementById('cp-new-tpl-name').value = '';
+        document.getElementById('cp-new-tpl-unit-price').value = '0';
+        document.getElementById('cp-new-tpl-sheet-price').value = '0';
         renderCPTemplatesTable();
     }
 
@@ -2381,42 +2388,35 @@
         const tpl = cpProductTemplates.find(t => t.id == id);
         if (!tpl) return;
 
-        // טען את הערכים לשדות המחשבון
         const sizeEl = document.getElementById('cp-size');
         const printTypeEl = document.getElementById('cp-print-type');
         const sidesEl = document.getElementById('cp-sides');
         const productTypeEl = document.getElementById('cp-product-type');
+        const retailEl = document.getElementById('cp-retail');
+        const pricingModeEl = document.getElementById('cp-pricing-mode');
 
         if (sizeEl) sizeEl.value = tpl.size === 'A3' ? 'A3' : 'A4';
         if (printTypeEl) printTypeEl.value = tpl.printType;
         if (sidesEl) sidesEl.value = tpl.sides;
         if (productTypeEl) productTypeEl.value = tpl.name;
 
-        // שמור יחידות לגיליון לחישוב
+        // הגדר מחיר אם הוגדר בתבנית
+        if (tpl.sheetPrice > 0 && retailEl && pricingModeEl) {
+            pricingModeEl.value = 'total';
+            retailEl.value = tpl.sheetPrice;
+        } else if (tpl.unitPrice > 0 && retailEl && pricingModeEl) {
+            pricingModeEl.value = 'total';
+            // מחיר לגיליון = מחיר ליחידה × יחידות בגיליון
+            retailEl.value = (tpl.unitPrice * tpl.perSheet).toFixed(2);
+        }
+
         window._cpPerSheet = tpl.perSheet;
 
         toggleCPCustomSize();
         calculateColorPrint();
-
-        // אפס את הסלקטור
         document.getElementById('cp-template-select').value = '';
     }
 
-    function renderCPTemplatesTable() {
-        const tbody = document.getElementById('cp-templates-tbody');
-        if (!tbody) return;
-        tbody.innerHTML = cpProductTemplates.map(t => `
-            <tr>
-                <td>${t.name}</td>
-                <td>${t.size}</td>
-                <td>${t.perSheet}</td>
-                <td>${t.printType === 'color' ? 'צבעוני' : 'שח"ל'}</td>
-                <td>${t.sides === 'double' ? 'דו-צדדי' : 'חד-צדדי'}</td>
-                <td><button class="btn-small btn-danger" onclick="deleteCPTemplate(${t.id})">🗑️</button></td>
-            </tr>
-        `).join('');
-        updateCPTemplateSelect();
-    }
 
     function renderCPCustomAddons() {
         const tbody = document.getElementById('cp-custom-addons-tbody');
