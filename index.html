@@ -1518,6 +1518,15 @@
                         <label for="cp-qty">כמות:</label>
                         <input type="number" id="cp-qty" value="100" min="1" oninput="calculateColorPrint()">
                     </div>
+                    <div class="col form-group">
+                        <label>שוליים להדפסה:</label>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                            <input type="checkbox" id="cp-bleed-enabled" checked onchange="toggleBleed();calculateColorPrint()" style="width:18px;height:18px;cursor:pointer;">
+                            <label for="cp-bleed-enabled" style="cursor:pointer;font-size:13px;">הוסף שוליים</label>
+                            <input type="number" id="cp-bleed" value="3" min="0.5" max="10" step="0.5" oninput="calculateColorPrint()" style="width:60px;">
+                            <span style="font-size:12px;color:var(--text-muted);">מ"מ</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="row">
                     <div class="col form-group">
@@ -1543,7 +1552,7 @@
                     </div>
                     <div class="col form-group">
                         <label for="cp-retail" id="cp-retail-label">מחיר מכירה כולל (לפני מע"מ):</label>
-                        <input type="number" id="cp-retail" value="150" min="0" oninput="calculateColorPrint(true)">
+                        <input type="number" id="cp-retail" value="150" min="0" oninput="cpActiveFixedTemplate=null; calculateColorPrint(true)">
                     </div>
                 </div>
 
@@ -2189,47 +2198,82 @@
                 </div>
             </div>
             <h4 class="settings-sub-title">4. תבניות מוצרים מוגדרות מראש</h4>
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">הגדר מוצרים קבועים שיופיעו כבחירה מהירה במחשבון</p>
-            <div class="table-responsive">
-                <table id="cp-templates-table">
-                    <thead><tr><th>שם מוצר</th><th>חומר</th><th>מידות (ס"מ)</th><th>יחידות/גיליון</th><th>הדפסה</th><th>צדדים</th><th>מחיר/יחידה</th><th></th></tr></thead>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">בנה תבניות שיופיעו כבחירה מהירה במחשבון הדפסה צבעונית</p>
+
+            <!-- טבלת תבניות קיימות -->
+            <div class="table-responsive" style="margin-bottom:20px;">
+                <table>
+                    <thead>
+                        <tr><th>שם</th><th>חומר</th><th>מוצר (ס"מ)</th><th>יח'/גיל'</th><th>כמות</th><th>הדפסה</th><th>צדדים</th><th>מחיר/יח'</th><th>מחיר סה"כ</th><th></th></tr>
+                    </thead>
                     <tbody id="cp-templates-tbody"></tbody>
                 </table>
             </div>
-            <div class="row" style="margin-top:12px;">
-                <div class="col form-group"><label>שם מוצר:</label><input type="text" id="cp-new-tpl-name" placeholder="לדוגמה: מדבקה 5×5"></div>
-                <div class="col form-group">
-                    <label>חומר (מהטבלה):</label>
-                    <select id="cp-new-tpl-material" onchange="calcTPLperSheet()">
-                        <option value="-1">-- בחר חומר --</option>
-                    </select>
-                    <small id="cp-tpl-mat-info" style="color:var(--primary);font-size:11px;"></small>
+
+            <!-- בניית תבנית חדשה -->
+            <div style="background:rgba(15,23,42,0.5);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;">
+                <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">כל הפרמטרים קבועים כולל כמות ומחיר – בוחרים תבנית ← הכל קופץ אוטומטית.</p>
+                <div class="row">
+                    <div class="col form-group">
+                        <label>שם התבנית:</label>
+                        <input type="text" id="cp-new-tpl-name" placeholder="לדוגמה: כרטיס ביקור 500 יח'">
+                    </div>
+                    <div class="col form-group">
+                        <label>חומר:</label>
+                        <select id="cp-new-tpl-material" onchange="calcTPLperSheet()">
+                            <option value="-1">-- בחר חומר --</option>
+                        </select>
+                        <small id="cp-tpl-mat-info" style="color:var(--primary);font-size:11px;"></small>
+                    </div>
+                    <div class="col form-group">
+                        <label>רוחב מוצר (ס"מ):</label>
+                        <input type="number" id="cp-new-tpl-w" value="9.2" step="0.1" min="0.1" oninput="calcTPLperSheet()">
+                    </div>
+                    <div class="col form-group">
+                        <label>גובה מוצר (ס"מ):</label>
+                        <input type="number" id="cp-new-tpl-h" value="5.2" step="0.1" min="0.1" oninput="calcTPLperSheet()">
+                    </div>
+                    <div class="col form-group">
+                        <label>יחידות לגיליון:</label>
+                        <input type="number" id="cp-new-tpl-persheet" value="1" min="1" style="background:rgba(59,130,246,0.1);">
+                        <small style="color:var(--primary);font-size:11px;">מחושב אוטומטי</small>
+                    </div>
+                    <div class="col form-group">
+                        <label>סוג הדפסה:</label>
+                        <select id="cp-new-tpl-printtype">
+                            <option value="color">צבעוני</option>
+                            <option value="bw">שח"ל</option>
+                        </select>
+                    </div>
+                    <div class="col form-group">
+                        <label>צדדים:</label>
+                        <select id="cp-new-tpl-sides">
+                            <option value="double">דו-צדדי</option>
+                            <option value="single">חד-צדדי</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="col form-group"><label>רוחב מוצר (ס"מ):</label><input type="number" id="cp-new-tpl-w" value="5" step="0.1" min="0.1" oninput="calcTPLperSheet()"></div>
-                <div class="col form-group"><label>גובה מוצר (ס"מ):</label><input type="number" id="cp-new-tpl-h" value="5" step="0.1" min="0.1" oninput="calcTPLperSheet()"></div>
-                <div class="col form-group">
-                    <label>יחידות לגיליון:</label>
-                    <input type="number" id="cp-new-tpl-persheet" value="1" min="1" style="background:rgba(59,130,246,0.1);">
-                    <small style="color:var(--primary);font-size:11px;">מחושב אוטומטי</small>
+                <div class="row" id="tpl-fixed-fields">
+                    <div class="col form-group">
+                        <label>כמות (יח'):</label>
+                        <input type="number" id="cp-new-tpl-qty" value="500" min="1">
+                    </div>
+                    <div class="col form-group">
+                        <label>מחיר סה"כ (₪):</label>
+                        <input type="number" id="cp-new-tpl-total-price" value="0" step="0.1" min="0" oninput="calcTPLunitPrice()">
+                    </div>
+                    <div class="col form-group">
+                        <label>מחיר ליחידה (₪):</label>
+                        <input type="number" id="cp-new-tpl-unit-price" value="0" step="0.001" min="0" oninput="calcTPLtotalPrice()">
+                        <small style="color:var(--text-muted);font-size:11px;">מחושב מהסה"כ</small>
+                    </div>
+                    <div class="col form-group" style="display:flex;align-items:flex-end;padding-bottom:15px;">
+                        <button class="btn" style="background:#22c55e;" onclick="addCPTemplate()">➕ הוסף תבנית</button>
+                    </div>
                 </div>
-                <div class="col form-group">
-                    <label>סוג הדפסה:</label>
-                    <select id="cp-new-tpl-printtype">
-                        <option value="color">צבעוני</option>
-                        <option value="bw">שח"ל</option>
-                    </select>
-                </div>
-                <div class="col form-group">
-                    <label>צדדים:</label>
-                    <select id="cp-new-tpl-sides">
-                        <option value="single">חד-צדדי</option>
-                        <option value="double">דו-צדדי</option>
-                    </select>
-                </div>
-                <div class="col form-group"><label>מחיר ליחידה (₪):</label><input type="number" id="cp-new-tpl-unit-price" value="0" step="0.01" min="0" placeholder="0 = אוטומטי"></div>
-                <div class="col form-group" style="display:flex;align-items:flex-end;padding-bottom:15px;">
-                    <button class="btn" onclick="addCPTemplate()">➕ הוסף תבנית</button>
-                </div>
+                <!-- סרטוט פריסה בזמן אמת -->
+                <div id="tpl-layout-preview" style="margin-top:12px;text-align:center;"></div>
+            </div>
             </div>
         </div>
 
@@ -2239,13 +2283,30 @@
 </div>
 
 <script>
-    let cpProductTemplates = [
-        { id: 1, name: 'פלייר A5', size: 'A4', perSheet: 2, printType: 'color', sides: 'double', unitPrice: 0, sheetPrice: 0 },
-        { id: 2, name: 'פלייר A6', size: 'A4', perSheet: 4, printType: 'color', sides: 'double', unitPrice: 0, sheetPrice: 0 },
-        { id: 3, name: 'כרטיס ביקור', size: 'A4', perSheet: 8, printType: 'color', sides: 'double', unitPrice: 0, sheetPrice: 0 },
-        { id: 4, name: 'מודעת אבל A4', size: 'A4', perSheet: 1, printType: 'bw', sides: 'single', unitPrice: 0, sheetPrice: 0 },
-        { id: 5, name: 'מודעת אבל A3', size: 'A3', perSheet: 1, printType: 'bw', sides: 'single', unitPrice: 0, sheetPrice: 0 }
-    ];
+    let cpProductTemplates = [];
+    let cpActiveFixedTemplate = null;
+    let currentTplType = 'fixed';
+
+    function getBleedCM() {
+        const enabled = document.getElementById('cp-bleed-enabled')?.checked !== false;
+        if (!enabled) return 0;
+        const mm = parseFloat(document.getElementById('cp-bleed')?.value) || 0;
+        return mm / 10;
+    }
+    function calcTPLunitPrice() {
+        const total = parseFloat(document.getElementById('cp-new-tpl-total-price')?.value) || 0;
+        const qty = parseInt(document.getElementById('cp-new-tpl-qty')?.value) || 1;
+        const unitEl = document.getElementById('cp-new-tpl-unit-price');
+        if (unitEl && total > 0) unitEl.value = (total / qty).toFixed(3);
+    }
+
+    function calcTPLtotalPrice() {
+        const unit = parseFloat(document.getElementById('cp-new-tpl-unit-price')?.value) || 0;
+        const qty = parseInt(document.getElementById('cp-new-tpl-qty')?.value) || 1;
+        const totalEl = document.getElementById('cp-new-tpl-total-price');
+        if (totalEl && unit > 0) totalEl.value = (unit * qty).toFixed(2);
+    }
+
 
     let materialGroups = [
         { id: "vinyl", name: "ויניל (לבן)", rolls: [{ width: 1.05, length: 50, cost: 400, retailM2: 60 }, { width: 1.27, length: 50, cost: 500, retailM2: 60 }, { width: 1.60, length: 50, cost: 650, retailM2: 60 }] },
@@ -2325,9 +2386,44 @@
 
     /* חישוב כמה יחידות נכנסות בדף גלם */
     function cpUnitsPerSheet(sheetW, sheetH, unitW, unitH) {
+        // אלגוריתם נסטינג מתקדם – בודק שילובים של עמידה ושכיבה
+        let best = 0;
+
+        // שיטה 1: כולם באותו כיוון
         const normal = Math.floor(sheetW / unitW) * Math.floor(sheetH / unitH);
         const rotated = Math.floor(sheetW / unitH) * Math.floor(sheetH / unitW);
-        return Math.max(normal, rotated, 1);
+        best = Math.max(normal, rotated);
+
+        // שיטה 2: נסטינג מעורב – פס עמודה + פס שורה
+        // מחלקים את הדף לשני אזורים: x רוחב לעמידה, (sheetW-x) לשכיבה
+        for (let x = unitW; x < sheetW; x += unitW) {
+            const zone1 = Math.floor(x / unitW) * Math.floor(sheetH / unitH);
+            const remW = sheetW - x;
+            const zone2 = Math.floor(remW / unitH) * Math.floor(sheetH / unitW);
+            best = Math.max(best, zone1 + zone2);
+        }
+        // הפוך – x לשכיבה, שאר לעמידה
+        for (let x = unitH; x < sheetW; x += unitH) {
+            const zone1 = Math.floor(x / unitH) * Math.floor(sheetH / unitW);
+            const remW = sheetW - x;
+            const zone2 = Math.floor(remW / unitW) * Math.floor(sheetH / unitH);
+            best = Math.max(best, zone1 + zone2);
+        }
+        // חלוקה לפי גובה
+        for (let y = unitH; y < sheetH; y += unitH) {
+            const zone1 = Math.floor(sheetW / unitW) * Math.floor(y / unitH);
+            const remH = sheetH - y;
+            const zone2 = Math.floor(sheetW / unitH) * Math.floor(remH / unitW);
+            best = Math.max(best, zone1 + zone2);
+        }
+        for (let y = unitW; y < sheetH; y += unitW) {
+            const zone1 = Math.floor(sheetW / unitH) * Math.floor(y / unitW);
+            const remH = sheetH - y;
+            const zone2 = Math.floor(sheetW / unitW) * Math.floor(remH / unitH);
+            best = Math.max(best, zone1 + zone2);
+        }
+
+        return Math.max(best, 1);
     }
 
     /* תוספות מותאמות אישית להדפסה צבעונית */
@@ -2342,16 +2438,24 @@
     function renderCPTemplatesTable() {
         const tbody = document.getElementById('cp-templates-tbody');
         if (!tbody) return;
+        if (cpProductTemplates.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:16px;">אין תבניות מוגדרות עדיין</td></tr>';
+            updateCPTemplateSelect();
+            updateCPTplMaterialSelect();
+            return;
+        }
         tbody.innerHTML = cpProductTemplates.map(t => `
             <tr>
-                <td>${t.name}</td>
-                <td>${t.materialName || '-'}</td>
-                <td>${t.productW || '-'}×${t.productH || '-'}</td>
+                <td><strong>${t.name}</strong></td>
+                <td style="font-size:12px;">${t.materialName || '-'}</td>
+                <td style="font-size:12px;">${t.productW||'-'}×${t.productH||'-'}</td>
                 <td>${t.perSheet}</td>
-                <td>${t.printType === 'color' ? 'צבעוני' : 'שח"ל'}</td>
-                <td>${t.sides === 'double' ? 'דו-צדדי' : 'חד-צדדי'}</td>
-                <td>${t.unitPrice > 0 ? '₪' + t.unitPrice : 'אוטומטי'}</td>
-                <td><button class="btn-danger" onclick="deleteCPTemplate(${t.id})" style="padding:4px 10px;font-size:12px;border:none;border-radius:6px;cursor:pointer;background:#ef4444;color:#fff;">🗑️</button></td>
+                <td>${t.fixedQty || '-'}</td>
+                <td>${t.printType === 'color' ? '🎨' : '⬛'}</td>
+                <td>${t.sides === 'double' ? 'דו' : 'חד'}</td>
+                <td>${t.unitPrice > 0 ? '₪' + t.unitPrice.toFixed(3) : '-'}</td>
+                <td>${t.totalPrice > 0 ? '₪' + t.totalPrice : '-'}</td>
+                <td><button onclick="deleteCPTemplate(${t.id})" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;">🗑️</button></td>
             </tr>
         `).join('');
         updateCPTemplateSelect();
@@ -2361,10 +2465,9 @@
     function updateCPTemplateSelect() {
         const sel = document.getElementById('cp-template-select');
         if (!sel) return;
-        const current = sel.value;
-        sel.innerHTML = '<option value="">-- בחר תבנית --</option>' +
-            cpProductTemplates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-        sel.value = current;
+        let html = '<option value="">-- בחר תבנית --</option>';
+        html += cpProductTemplates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        sel.innerHTML = html;
     }
 
     // גדלי דפים בס"מ
@@ -2392,46 +2495,69 @@
         const w = parseFloat(document.getElementById('cp-new-tpl-w')?.value) || 0;
         const h = parseFloat(document.getElementById('cp-new-tpl-h')?.value) || 0;
 
-        if (matIdx < 0 || !cpMaterials[matIdx] || !w || !h) return;
+        const preview = document.getElementById('tpl-layout-preview');
+
+        if (matIdx < 0 || !cpMaterials[matIdx] || !w || !h) {
+            if (preview) preview.innerHTML = '';
+            return;
+        }
 
         const mat = cpMaterials[matIdx];
-        const normal = Math.floor(mat.sheetW / w) * Math.floor(mat.sheetH / h);
-        const rotated = Math.floor(mat.sheetW / h) * Math.floor(mat.sheetH / w);
-        const perSheet = Math.max(normal, rotated, 1);
+        const bleedMM = 3; // שוליים ברירת מחדל
+        const bleedCM = bleedMM / 10;
+        const wb = w + bleedCM * 2;
+        const hb = h + bleedCM * 2;
+        const perSheet = cpUnitsPerSheet(mat.sheetW, mat.sheetH, wb, hb);
 
         const el = document.getElementById('cp-new-tpl-persheet');
         if (el) el.value = perSheet;
 
         const info = document.getElementById('cp-tpl-mat-info');
-        if (info) info.textContent = `${perSheet} יחידות לגיליון • מחיר גיליון: ₪${mat.retailSheet}`;
+        if (info) info.textContent = `${perSheet} יחידות לגיליון (עם שוליים ${bleedMM}מ"מ) • מחיר גיליון: ₪${mat.retailSheet}`;
+
+        if (preview) {
+            preview.innerHTML = cpLayoutSVG(mat.sheetW, mat.sheetH, wb, hb, perSheet, w, h);
+        }
     }
 
     function addCPTemplate() {
         const name = document.getElementById('cp-new-tpl-name').value.trim();
-        if (!name) { alert('הזן שם מוצר'); return; }
+        if (!name) { alert('הזן שם תבנית'); return; }
         const matIdx = parseInt(document.getElementById('cp-new-tpl-material').value);
-        if (matIdx < 0) { alert('בחר חומר'); return; }
+        if (matIdx < 0 || !cpMaterials[matIdx]) { alert('בחר חומר'); return; }
         const mat = cpMaterials[matIdx];
+        const qty = parseInt(document.getElementById('cp-new-tpl-qty')?.value) || 0;
+        const totalPrice = parseFloat(document.getElementById('cp-new-tpl-total-price')?.value) || 0;
+        const unitPriceInput = parseFloat(document.getElementById('cp-new-tpl-unit-price')?.value) || 0;
+        const unitPrice = unitPriceInput > 0 ? unitPriceInput : (totalPrice > 0 && qty > 0 ? totalPrice/qty : 0);
         const tpl = {
             id: Date.now(),
+            tplType: currentTplType,
             name,
             materialIdx: matIdx,
             materialName: mat.name,
             sheetW: mat.sheetW,
             sheetH: mat.sheetH,
             retailSheet: mat.retailSheet,
+            costSheet: mat.packQty > 0 ? mat.packCost / mat.packQty : 0,
             productW: parseFloat(document.getElementById('cp-new-tpl-w').value) || 0,
             productH: parseFloat(document.getElementById('cp-new-tpl-h').value) || 0,
             perSheet: parseInt(document.getElementById('cp-new-tpl-persheet').value) || 1,
             printType: document.getElementById('cp-new-tpl-printtype').value,
-            sides: document.getElementById('cp-new-tpl-sides').value,
-            unitPrice: parseFloat(document.getElementById('cp-new-tpl-unit-price').value) || 0
+            sides: document.getElementById('cp-new-tpl-sides').value === 'double' ? 'double' : 'single',
+            fixedQty: currentTplType === 'fixed' ? qty : null,
+            totalPrice: currentTplType === 'fixed' ? totalPrice : 0,
+            unitPrice: currentTplType === 'fixed' ? unitPrice : 0
         };
         cpProductTemplates.push(tpl);
         document.getElementById('cp-new-tpl-name').value = '';
-        document.getElementById('cp-new-tpl-unit-price').value = '0';
+        const tp = document.getElementById('cp-new-tpl-total-price');
+        const up = document.getElementById('cp-new-tpl-unit-price');
+        if (tp) tp.value = '0';
+        if (up) up.value = '0';
         renderCPTemplatesTable();
     }
+
 
     function deleteCPTemplate(id) {
         if (!confirm('למחוק תבנית זו?')) return;
@@ -2444,58 +2570,69 @@
         const tpl = cpProductTemplates.find(t => t.id == id);
         if (!tpl) return;
 
-        const printTypeEl = document.getElementById('cp-print-type');
-        const sidesEl = document.getElementById('cp-sides');
-        const productTypeEl = document.getElementById('cp-product-type');
-        const retailEl = document.getElementById('cp-retail');
-        const pricingModeEl = document.getElementById('cp-pricing-mode');
+        // טען חומר
         const matEl = document.getElementById('cp-material');
-
-        // טען חומר מהתבנית
-        if (matEl && tpl.materialIdx !== undefined) {
-            const matchIdx = cpMaterials.findIndex((m, i) => i === tpl.materialIdx && m.name === tpl.materialName);
-            if (matchIdx >= 0) matEl.value = matchIdx;
-            else {
-                // חפש לפי שם
-                const byName = cpMaterials.findIndex(m => m.name === tpl.materialName);
-                if (byName >= 0) matEl.value = byName;
-            }
+        if (matEl) {
+            const byName = cpMaterials.findIndex(m => m.name === tpl.materialName);
+            if (byName >= 0) matEl.value = byName;
         }
 
-        if (printTypeEl) printTypeEl.value = tpl.printType;
-        if (sidesEl) sidesEl.value = tpl.sides;
+        // גודל המוצר – שים בגודל מותאם עם מידות המוצר
+        const sizeEl = document.getElementById('cp-size');
+        if (sizeEl && tpl.productW && tpl.productH) {
+            sizeEl.value = 'custom';
+            toggleCPCustomSize(); // הצג שדות מותאם תחילה
+            const wEl = document.getElementById('cp-width-cm');
+            const hEl = document.getElementById('cp-height-cm');
+            if (wEl) wEl.value = tpl.productW;
+            if (hEl) hEl.value = tpl.productH;
+        }
+
+        // סוג הדפסה + צדדים
+        const printTypeEl = document.getElementById('cp-print-type');
+        const sidesEl = document.getElementById('cp-sides');
+        if (printTypeEl) printTypeEl.value = tpl.printType === 'bw' ? 'bw' : 'color';
+        if (sidesEl) sidesEl.value = tpl.sides === 'double' ? '2' : '1';
+
+        // שם מוצר
+        const productTypeEl = document.getElementById('cp-product-type');
         if (productTypeEl) {
             const opt = Array.from(productTypeEl.options).find(o => o.value === tpl.name);
-            productTypeEl.value = opt ? tpl.name : 'אחר';
-            if (!opt) {
+            if (opt) {
+                productTypeEl.value = tpl.name;
+            } else {
+                productTypeEl.value = 'אחר';
                 const customEl = document.getElementById('cp-custom-product');
                 if (customEl) customEl.value = tpl.name;
             }
         }
 
-        // גודל דף – נגזר מהחומר
-        const sizeEl = document.getElementById('cp-size');
-        if (sizeEl && tpl.sheetW && tpl.sheetH) {
-            // מצא גודל מתאים
-            const matchSize = Object.entries(cpSizes).find(([k, v]) => 
-                Math.abs(v.w - tpl.sheetW) < 1 && Math.abs(v.h - tpl.sheetH) < 1 ||
-                Math.abs(v.w - tpl.sheetH) < 1 && Math.abs(v.h - tpl.sheetW) < 1
-            );
-            if (matchSize) sizeEl.value = matchSize[0];
+        // כמות
+        const qtyEl = document.getElementById('cp-qty');
+        if (qtyEl && tpl.fixedQty) qtyEl.value = tpl.fixedQty;
+
+        // מחיר
+        const retailEl = document.getElementById('cp-retail');
+        const pricingModeEl = document.getElementById('cp-pricing-mode');
+        if (retailEl && pricingModeEl) {
+            if (tpl.tplType === 'fixed') {
+                if (tpl.unitPrice > 0) {
+                    pricingModeEl.value = 'unit';
+                    retailEl.value = tpl.unitPrice.toFixed(2);
+                } else if (tpl.totalPrice > 0) {
+                    pricingModeEl.value = 'total';
+                    retailEl.value = tpl.totalPrice.toFixed(2);
+                }
+            } else {
+                pricingModeEl.value = 'total';
+                retailEl.value = tpl.retailSheet || '';
+            }
         }
 
-        // מחיר – אם יש מחיר ליחידה בתבנית השתמש בו, אחרת חשב אוטומטי
-        if (tpl.unitPrice > 0 && retailEl && pricingModeEl) {
-            pricingModeEl.value = 'total';
-            retailEl.value = (tpl.unitPrice * tpl.perSheet).toFixed(2);
-        } else if (tpl.retailSheet > 0 && retailEl && pricingModeEl) {
-            pricingModeEl.value = 'total';
-            retailEl.value = tpl.retailSheet;
-        }
-
-        window._cpPerSheet = tpl.perSheet;
         toggleCPCustomSize();
-        calculateColorPrint();
+        toggleCPCustomProduct();
+        cpActiveFixedTemplate = (tpl.tplType === 'fixed' && (tpl.totalPrice > 0 || tpl.unitPrice > 0)) ? tpl : null;
+        calculateColorPrint(cpActiveFixedTemplate !== null);
         document.getElementById('cp-template-select').value = '';
     }
 
@@ -2611,6 +2748,8 @@
     }
 
     function calculateColorPrint(manualRetail = false) {
+        // אם יש תבנית קבועה פעילה — שמור תמיד על המחיר שלה
+        if (cpActiveFixedTemplate) manualRetail = true;
         /* --- קלטים --- */
         toggleCPCustomProduct();
         const productType = document.getElementById('cp-product-type').value;
@@ -2633,11 +2772,15 @@
         }
 
         const qty = parseInt(document.getElementById('cp-qty').value) || 100;
+        const bleedCM = getBleedCM();
         const printType = document.getElementById('cp-print-type').value;
         const sides = parseInt(document.getElementById('cp-sides').value);
 
         /* --- חישוב דפים נדרשים --- */
-        const unitsPerSheet = cpUnitsPerSheet(mat.sheetW, mat.sheetH, unitW, unitH);
+        // מוסיף שוליים למידות המוצר לפני חישוב הכמות בדף
+        const unitWwithBleed = unitW + bleedCM * 2;
+        const unitHwithBleed = unitH + bleedCM * 2;
+        const unitsPerSheet = cpUnitsPerSheet(mat.sheetW, mat.sheetH, unitWwithBleed, unitHwithBleed);
         const sheetsNeeded = Math.ceil(qty / unitsPerSheet);
 
         /* --- עלות קליק לפי גודל דף גלם --- */
@@ -2736,7 +2879,125 @@
             <strong>📦 מוצר:</strong> ${productName} | ${mat.name} (דף ${mat.sheetW}×${mat.sheetH}) | ${sizeLabel} | ${printLabel} ${sidesLabel}<br>
             <strong>📊 פריסה:</strong> ${unitsPerSheet} יח' בדף → ${sheetsNeeded} דפים × ${sides} צד/דים = ${sheetsNeeded * sides} קליקים${activeAddons.length ? '<br><strong>⚙️ תוספות:</strong> ' + activeAddons.join(', ') : ''}<br>
             עלות ייצור: <strong>₪${totalProductionCost.toFixed(2)}</strong> (₪${productionCostPerUnit.toFixed(2)} ליח') | מכירה: <strong>₪${retailTotal.toFixed(2)}</strong> | רווח: <strong>₪${profit.toFixed(2)}</strong> | מחיר ליחידה: <strong>₪${retailPerUnit.toFixed(2)}</strong>
+            ${cpLayoutSVG(mat.sheetW, mat.sheetH, unitWwithBleed, unitHwithBleed, unitsPerSheet, unitW, unitH, qty)}
         `;
+    }
+
+    function cpLayoutSVG(sheetW, sheetH, unitWb, unitHb, totalUnits, unitW, unitH, requestedQty) {
+        if (!unitWb || !unitHb || unitWb <= 0 || unitHb <= 0) return '';
+        unitW = unitW || unitWb;
+        unitH = unitH || unitHb;
+        // אם requestedQty לא הועבר — הצג את כולם (ברירת מחדל)
+        const activeCount = (requestedQty > 0) ? Math.min(requestedQty, totalUnits) : totalUnits;
+        const bleedW = (unitWb - unitW) / 2;
+        const bleedH = (unitHb - unitH) / 2;
+
+        const svgW = 220, svgH = Math.round(220 * sheetH / sheetW);
+        const margin = 6; // שוליים חיצוניים בפיקסלים
+        const scaleX = (svgW - margin * 2) / sheetW;
+        const scaleY = (svgH - margin * 2) / sheetH;
+
+        // מצא את הסידור הטוב ביותר (אותו אלגוריתם)
+        let best = 0, bestLayout = [];
+
+        function tryLayout(zones) {
+            const rects = [];
+            let count = 0;
+            for (const z of zones) {
+                const cols = Math.floor(z.w / z.uw);
+                const rows = Math.floor(z.h / z.uh);
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        rects.push({ x: z.x + c * z.uw, y: z.y + r * z.uh, w: z.uw, h: z.uh, rotated: z.rotated });
+                        count++;
+                    }
+                }
+            }
+            if (count > best) { best = count; bestLayout = rects; }
+        }
+
+        // כולם רגיל
+        tryLayout([{ x:0, y:0, w:sheetW, h:sheetH, uw:unitWb, uh:unitHb, rotated:false }]);
+        // כולם מסובב
+        tryLayout([{ x:0, y:0, w:sheetW, h:sheetH, uw:unitHb, uh:unitWb, rotated:true }]);
+
+        for (let x = unitWb; x < sheetW - unitHb + 1; x += unitWb) {
+            tryLayout([
+                { x:0, y:0, w:x, h:sheetH, uw:unitWb, uh:unitHb, rotated:false },
+                { x:x, y:0, w:sheetW-x, h:sheetH, uw:unitHb, uh:unitWb, rotated:true }
+            ]);
+        }
+        for (let x = unitHb; x < sheetW - unitWb + 1; x += unitHb) {
+            tryLayout([
+                { x:0, y:0, w:x, h:sheetH, uw:unitHb, uh:unitWb, rotated:true },
+                { x:x, y:0, w:sheetW-x, h:sheetH, uw:unitWb, uh:unitHb, rotated:false }
+            ]);
+        }
+        for (let y = unitHb; y < sheetH - unitWb + 1; y += unitHb) {
+            tryLayout([
+                { x:0, y:0, w:sheetW, h:y, uw:unitWb, uh:unitHb, rotated:false },
+                { x:0, y:y, w:sheetW, h:sheetH-y, uw:unitHb, uh:unitWb, rotated:true }
+            ]);
+        }
+        for (let y = unitWb; y < sheetH - unitHb + 1; y += unitWb) {
+            tryLayout([
+                { x:0, y:0, w:sheetW, h:y, uw:unitHb, uh:unitWb, rotated:true },
+                { x:0, y:y, w:sheetW, h:sheetH-y, uw:unitWb, uh:unitHb, rotated:false }
+            ]);
+        }
+
+        // חשב את השטח שתפוס וממרכז
+        const usedW_normal = Math.floor(sheetW / unitWb) * unitWb;
+        const usedH_normal = Math.floor(sheetH / unitHb) * unitHb;
+
+        // מרכז את כל הסידור בתוך הדף
+        const rects = bestLayout.map((r) => {
+            // מצא את גבולות כל הסידור
+            return r;
+        });
+
+        // חשב bounding box של הסידור
+        if (bestLayout.length === 0) return '';
+        const minX = Math.min(...bestLayout.map(r => r.x));
+        const minY = Math.min(...bestLayout.map(r => r.y));
+        const maxX = Math.max(...bestLayout.map(r => r.x + r.w));
+        const maxY = Math.max(...bestLayout.map(r => r.y + r.h));
+        const offsetX = (sheetW - (maxX - minX)) / 2;
+        const offsetY = (sheetH - (maxY - minY)) / 2;
+
+        const svgRects = bestLayout.map((r, idx) => {
+            const isRotated = r.rotated;
+            const isActive = idx < activeCount;
+            const color = isRotated ? '#6366f1' : '#3b82f6';
+            const cx = r.x + offsetX;
+            const cy = r.y + offsetY;
+            // אזור השוליים
+            const bleedRect = `<rect x="${(cx*scaleX+margin+0.5).toFixed(1)}" y="${(cy*scaleY+margin+0.5).toFixed(1)}" 
+                width="${(r.w*scaleX-1).toFixed(1)}" height="${(r.h*scaleY-1).toFixed(1)}" 
+                fill="${isActive ? color : '#334155'}" fill-opacity="${isActive ? 0.2 : 0.1}" stroke="${isActive ? color : '#475569'}" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+            // המוצר האמיתי
+            const innerW = isRotated ? unitH : unitW;
+            const innerH = isRotated ? unitW : unitH;
+            const innerX = cx + bleedW;
+            const innerY = cy + bleedH;
+            const productRect = `<rect x="${(innerX*scaleX+margin+0.5).toFixed(1)}" y="${(innerY*scaleY+margin+0.5).toFixed(1)}" 
+                width="${(innerW*scaleX-1).toFixed(1)}" height="${(innerH*scaleY-1).toFixed(1)}" 
+                fill="${isActive ? color : '#1e293b'}" fill-opacity="${isActive ? 0.7 : 0.3}" stroke="${isActive ? '#fff' : '#475569'}" stroke-width="${isActive ? 0.8 : 0.4}" rx="1"/>`;
+            return bleedRect + productRect;
+        }).join('');
+
+        return `<div style="margin-top:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">
+                סרטוט פריסה (${sheetW}×${sheetH} ס"מ) – ${activeCount} מודפסות מתוך ${best} בדף
+                ${bleedW > 0 ? `| שוליים ${(bleedW*10).toFixed(1)} מ"מ` : ''}
+                <span style="color:#3b82f6;">■</span> עמידה 
+                <span style="color:#6366f1;">■</span> שכיבה
+            </div>
+            <svg width="${svgW}" height="${svgH}" style="border:1px solid #334155;border-radius:4px;background:#1e293b;display:block;margin:0 auto;">
+                ${svgRects}
+                <rect x="0" y="0" width="${svgW}" height="${svgH}" fill="none" stroke="#475569" stroke-width="1"/>
+            </svg>
+        </div>`;
     }
 
     function pushColorPrintToGlobalOrder() {
