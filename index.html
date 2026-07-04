@@ -4821,11 +4821,10 @@
     }
     // ============================================================
 
-    // רישום Service Worker לPWA
+    // בטל את ה-Service Worker כדי למנוע cache ישן
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/dafus-shlosh/service-worker.js')
-                .catch(err => console.log('SW error:', err));
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+            registrations.forEach(reg => reg.unregister());
         });
     }
 
