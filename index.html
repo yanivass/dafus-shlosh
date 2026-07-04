@@ -1078,6 +1078,7 @@
                 <option value="stamps_mod">印 חותמות ואביזרים Shiny (כולל מפרט טכני)</option>
                 <option value="chemical_notebooks_mod">🗂️ פנקסים כימיים (מקור והעתקים)</option>
                 <option value="color_print_mod">🖨️ הדפסה צבעונית (פליירים, כרטיסי ביקור, מדבקות...)</option>
+                <option value="sheet_cut_mod">🔲 גזירת פלטות (פרספקס / PVC / אלוקובונד)</option>
             </select>
         </div>
 
@@ -1596,6 +1597,82 @@
             <button class="btn btn-add-global" onclick="pushColorPrintToGlobalOrder()">🎯 עבודה מוכנה - הוסף להצעה</button>
         </div>
 
+        <!-- ===== מודול גזירת פלטות ===== -->
+        <div id="module-sheet-cut" class="calculator-module section-block" style="border-top: 4px solid #14b8a6;">
+            <h2>🔲 מחשבון גזירת פלטות</h2>
+            <div class="inner-block">
+                <!-- חומר + עובי -->
+                <div class="row">
+                    <div class="col form-group">
+                        <label>סוג חומר:</label>
+                        <select id="sc-material-type" onchange="updateScThicknessSelect(); updateScSheetSizeSelect(); calculateSheetCut()">
+                            <option value="">-- בחר סוג --</option>
+                            <option value="pvc">PVC</option>
+                            <option value="perspex">פרספקס</option>
+                            <option value="alucobond">אלוקובונד</option>
+                        </select>
+                    </div>
+                    <div class="col form-group">
+                        <label>עובי:</label>
+                        <select id="sc-material-thickness" onchange="calculateSheetCut()">
+                            <option value="">-- בחר עובי --</option>
+                        </select>
+                    </div>
+                    <div class="col form-group" style="max-width:160px;">
+                        <label>מחיר לחיתוך (₪):</label>
+                        <input type="number" id="sc-cut-price" value="2" step="0.5" min="0" oninput="calculateSheetCut()">
+                    </div>
+                    <div class="col form-group">
+                        <label>שם מוצר / תיאור:</label>
+                        <input type="text" id="sc-product-name" placeholder="לדוגמה: שלטים לחנות">
+                    </div>
+                </div>
+
+                <!-- טבלת חתיכות -->
+                <div style="margin-top:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <label style="font-weight:600;color:var(--accent);">✂️ רשימת חתיכות:</label>
+                        <button class="btn" style="background:#14b8a6;padding:6px 14px;font-size:13px;" onclick="scAddPieceRow()">➕ הוסף מידה</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead><tr><th>צורה</th><th>רוחב/קוטר (ס"מ)</th><th>גובה (ס"מ)</th><th>כמות</th><th>תיאור</th><th></th></tr></thead>
+                            <tbody id="sc-pieces-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- תוצאות -->
+            <div id="sc-result" style="margin:12px 16px;display:none;">
+                <!-- סיכום אופציה מומלצת -->
+                <div id="sc-result-text" style="font-size:14px;line-height:2;margin-bottom:12px;background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.3);border-radius:10px;padding:14px;"></div>
+                <!-- בחירת גודל ידנית -->
+                <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <label style="font-size:13px;color:var(--text-muted);white-space:nowrap;">🔄 בחר גודל פלטה אחר:</label>
+                    <select id="sc-size-picker" onchange="scShowSize(this.value)" style="min-width:180px;">
+                        <option value="">-- בחר גודל --</option>
+                    </select>
+                </div>
+                <!-- SVG פריסה -->
+                <div id="sc-sheets-results"></div>
+            </div>
+
+            <div class="inner-block" style="margin-top:8px;">
+                <div class="row">
+                    <div class="col form-group" style="max-width:200px;">
+                        <label>מחיר מכירה (₪ לפלטה):</label>
+                        <input type="number" id="sc-retail-per-sheet" value="0" step="0.5" min="0" oninput="calculateSheetCut()">
+                    </div>
+                    <div class="col form-group" style="max-width:200px;">
+                        <label>מחיר לצרכן סה"כ (₪):</label>
+                        <input type="number" id="sc-retail-total" value="0" step="0.5" min="0" style="background:rgba(20,184,166,0.1);" readonly>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-add-global" style="background:linear-gradient(135deg,#14b8a6,#0d9488);" onclick="pushSheetCutToGlobalOrder()">🎯 עבודה מוכנה - הוסף להצעה</button>
+        </div>
+
         <div class="section-block" style="margin-top: 30px;">
             <h3>📋 ריכוז סופי של הצעת המחיר (סל פרויקט מאוחד)</h3>
             <div class="table-responsive">
@@ -1751,6 +1828,7 @@
             <button class="settings-menu-btn" onclick="switchSettingsSection(this, 'sett-sec-stamps')">印 מחירון חותמות Shiny</button>
             <button class="settings-menu-btn" onclick="switchSettingsSection(this, 'sett-sec-chemical')">🗂️ מחירון פנקסים כימיים</button>
             <button class="settings-menu-btn" onclick="switchSettingsSection(this, 'sett-sec-colorprint')">🖨️ מחירון הדפסה צבעונית</button>
+            <button class="settings-menu-btn" onclick="switchSettingsSection(this, 'sett-sec-sheetcut')">🔲 גזירת פלטות</button>
         </div>
 
         <div id="sett-sec-general" class="settings-section active section-block">
@@ -2274,6 +2352,59 @@
                 <!-- סרטוט פריסה בזמן אמת -->
                 <div id="tpl-layout-preview" style="margin-top:12px;text-align:center;"></div>
             </div>
+            </div>
+        </div>
+
+        <br>
+
+        <!-- ===== הגדרות גזירת פלטות ===== -->
+        <div id="sett-sec-sheetcut" class="settings-section section-block">
+            <h3 class="settings-title">🔲 הגדרות גזירת פלטות</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">מחירי החומרים נלקחים מהגדרות פורמט רחב למעלה.</p>
+
+            <!-- PVC -->
+            <h4 class="settings-sub-title">📋 גדלי פלטות — PVC</h4>
+            <div class="table-responsive" style="margin-bottom:8px;">
+                <table><thead><tr><th>שם</th><th>רוחב (מ')</th><th>גובה (מ')</th><th></th></tr></thead>
+                    <tbody id="sc-pvc-tbody"></tbody></table>
+            </div>
+            <div class="row" style="margin-bottom:20px;">
+                <div class="col form-group"><label>שם:</label><input type="text" id="sc-pvc-new-name" placeholder="2.44×1.22"></div>
+                <div class="col form-group"><label>רוחב (מ'):</label><input type="number" id="sc-pvc-new-w" value="2.44" step="0.01" min="0.1"></div>
+                <div class="col form-group"><label>גובה (מ'):</label><input type="number" id="sc-pvc-new-h" value="1.22" step="0.01" min="0.1"></div>
+                <div class="col form-group" style="display:flex;align-items:flex-end;padding-bottom:15px;">
+                    <button class="btn" style="background:#14b8a6;" onclick="addScSizeFor('pvc')">➕ הוסף</button>
+                </div>
+            </div>
+
+            <!-- פרספקס -->
+            <h4 class="settings-sub-title">📋 גדלי פלטות — פרספקס</h4>
+            <div class="table-responsive" style="margin-bottom:8px;">
+                <table><thead><tr><th>שם</th><th>רוחב (מ')</th><th>גובה (מ')</th><th></th></tr></thead>
+                    <tbody id="sc-perspex-tbody"></tbody></table>
+            </div>
+            <div class="row" style="margin-bottom:20px;">
+                <div class="col form-group"><label>שם:</label><input type="text" id="sc-perspex-new-name" placeholder="2.44×1.22"></div>
+                <div class="col form-group"><label>רוחב (מ'):</label><input type="number" id="sc-perspex-new-w" value="2.44" step="0.01" min="0.1"></div>
+                <div class="col form-group"><label>גובה (מ'):</label><input type="number" id="sc-perspex-new-h" value="1.22" step="0.01" min="0.1"></div>
+                <div class="col form-group" style="display:flex;align-items:flex-end;padding-bottom:15px;">
+                    <button class="btn" style="background:#14b8a6;" onclick="addScSizeFor('perspex')">➕ הוסף</button>
+                </div>
+            </div>
+
+            <!-- אלוקובונד -->
+            <h4 class="settings-sub-title">📋 גדלי פלטות — אלוקובונד</h4>
+            <div class="table-responsive" style="margin-bottom:8px;">
+                <table><thead><tr><th>שם</th><th>רוחב (מ')</th><th>גובה (מ')</th><th></th></tr></thead>
+                    <tbody id="sc-aluco-tbody"></tbody></table>
+            </div>
+            <div class="row">
+                <div class="col form-group"><label>שם:</label><input type="text" id="sc-aluco-new-name" placeholder="300×150 ס&quot;מ"></div>
+                <div class="col form-group"><label>רוחב (מ'):</label><input type="number" id="sc-aluco-new-w" value="3.00" step="0.01" min="0.1"></div>
+                <div class="col form-group"><label>גובה (מ'):</label><input type="number" id="sc-aluco-new-h" value="1.50" step="0.01" min="0.1"></div>
+                <div class="col form-group" style="display:flex;align-items:flex-end;padding-bottom:15px;">
+                    <button class="btn" style="background:#14b8a6;" onclick="addScSizeFor('alucobond')">➕ הוסף</button>
+                </div>
             </div>
         </div>
 
@@ -3292,6 +3423,7 @@
         else if (selectedValue === 'stamps_mod') { document.getElementById('module-stamps').style.display = 'block'; handleStampCategoryChange(); }
         else if (selectedValue === 'chemical_notebooks_mod') { document.getElementById('module-chemical-notebooks').style.display = 'block'; calculateChemicalNotebookPrice(); }
         else if (selectedValue === 'color_print_mod') { document.getElementById('module-color-print').style.display = 'block'; calculateColorPrint(); }
+        else if (selectedValue === 'sheet_cut_mod') { document.getElementById('module-sheet-cut').style.display = 'block'; calculateSheetCut(); }
     }
 
     function switchTab(element, tabId) {
@@ -4321,6 +4453,11 @@
             if (el) localStorage.setItem(id, el.value);
         });
 
+        // גזירת פלטות
+        localStorage.setItem('scPvcSizes', JSON.stringify(scPvcSizes));
+        localStorage.setItem('scPerspexSizes', JSON.stringify(scPerspexSizes));
+        localStorage.setItem('scAlucobondSizes', JSON.stringify(scAlucobondSizes));
+
         alert("המחירונים וההגדרות נשמרו בהצלחה בדפדפן הנוכחי!");
         calculateGroupPrice();
         renderGlobalOrder();
@@ -4441,6 +4578,19 @@
          'sett-cp-perf-cost','sett-cp-perf-retail'].forEach(id => {
             if(localStorage.getItem(id)) document.getElementById(id).value = localStorage.getItem(id);
         });
+
+        // גזירת פלטות
+        // גזירת פלטות
+        const loadScList = (key, def) => { try { const s = JSON.parse(localStorage.getItem(key)); return s?.length ? s : def; } catch(e) { return def; } };
+        scPvcSizes = loadScList('scPvcSizes', scPvcSizes);
+        scPerspexSizes = loadScList('scPerspexSizes', scPerspexSizes);
+        scAlucobondSizes = loadScList('scAlucobondSizes', scAlucobondSizes);
+        scPvcIdSeq = Math.max(...scPvcSizes.map(s=>s.id), 10);
+        scPerspexIdSeq = Math.max(...scPerspexSizes.map(s=>s.id), 10);
+        scAlucoIdSeq = Math.max(...scAlucobondSizes.map(s=>s.id), 20);
+        renderScSizes();
+        updateScThicknessSelect();
+        renderScPiecesTable();
 
         // טעינת מידע על הצעה פעילה שנשמרה
         if(localStorage.getItem('activeClientName')) document.getElementById('client-name').value = localStorage.getItem('activeClientName');
@@ -4818,48 +4968,33 @@
     // ============================================================
 
     function doLogin() {
-        const pw = document.getElementById('login-password').value.trim();
-        if (pw === PASSWORDS.admin) {
-            enterSystem('admin');
-        } else if (pw === PASSWORDS.worker) {
-            enterSystem('worker');
-        } else {
-            const err = document.getElementById('login-error');
-            err.textContent = '❌ סיסמה שגויה, נסה שנית';
-            setTimeout(() => err.textContent = '', 2500);
-            document.getElementById('login-password').value = '';
-            document.getElementById('login-password').focus();
-        }
+        enterSystem('admin');
     }
 
     function enterSystem(role) {
-        sessionStorage.setItem('userRole', role);
+        sessionStorage.setItem('userRole', 'admin');
         document.getElementById('login-screen').style.display = 'none';
         const badge = document.getElementById('role-badge');
         badge.style.display = 'flex';
-        if (role === 'worker') {
-            document.body.classList.add('worker-mode');
-            document.getElementById('role-label').textContent = '👤 עובדת';
-        } else {
-            document.body.classList.remove('worker-mode');
-            document.getElementById('role-label').textContent = '👑 מנהל';
-        }
+        document.body.classList.remove('worker-mode');
+        document.getElementById('role-label').textContent = '👑 מנהל';
     }
 
     function doLogout() {
         sessionStorage.removeItem('userRole');
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('role-badge').style.display = 'none';
-        document.getElementById('login-password').value = '';
         document.body.classList.remove('worker-mode');
-        setTimeout(() => document.getElementById('login-password').focus(), 100);
+        setTimeout(() => document.getElementById('login-screen').querySelector('button')?.click(), 100);
     }
 
-    // בדיקה אם כבר מחובר (רענון דף)
+    // כניסה אוטומטית
     (function() {
         const savedRole = sessionStorage.getItem('userRole');
-        if (savedRole === 'admin' || savedRole === 'worker') {
-            enterSystem(savedRole);
+        if (savedRole) {
+            enterSystem('admin');
+        } else {
+            enterSystem('admin'); // כניסה ישירה ללא סיסמה
         }
 
         // נסה להתחבר מחדש ל-Drive אוטומטית
@@ -5044,7 +5179,528 @@
         };
         reader.readAsText(file);
     }
-</script>
 
+    /* ============================================================
+       מודול גזירת פלטות — nesting רב-מידות
+    ============================================================ */
+    let scPvcSizes = [
+        { id: 1, name: '2.44×1.22', w: 2.44, h: 1.22 },
+        { id: 2, name: '3×2', w: 3, h: 2 },
+        { id: 3, name: '2×1', w: 2, h: 1 }
+    ];
+    let scPerspexSizes = [
+        { id: 1, name: '2.44×1.22', w: 2.44, h: 1.22 },
+        { id: 2, name: '3×2', w: 3, h: 2 }
+    ];
+    let scAlucobondSizes = [
+        { id: 1,  name: '200×100 ס"מ', w: 2.00, h: 1.00 },
+        { id: 2,  name: '200×150 ס"מ', w: 2.00, h: 1.50 },
+        { id: 3,  name: '244×122 ס"מ', w: 2.44, h: 1.22 },
+        { id: 4,  name: '300×100 ס"מ', w: 3.00, h: 1.00 },
+        { id: 5,  name: '300×125 ס"מ', w: 3.00, h: 1.25 },
+        { id: 6,  name: '300×150 ס"מ', w: 3.00, h: 1.50 },
+        { id: 7,  name: '400×100 ס"מ', w: 4.00, h: 1.00 },
+        { id: 8,  name: '400×125 ס"מ', w: 4.00, h: 1.25 },
+        { id: 9,  name: '400×150 ס"מ', w: 4.00, h: 1.50 },
+        { id: 10, name: '420×150 ס"מ', w: 4.20, h: 1.50 },
+        { id: 11, name: '300×200 ס"מ', w: 3.00, h: 2.00 },
+    ];
+    let scPvcIdSeq = 10, scPerspexIdSeq = 10, scAlucoIdSeq = 20;
+
+    // שמור תאימות לקוד ישן שמשתמש ב-scSizes
+    let scSizes = scPvcSizes;
+    let scSizeIdSeq = 10;
+
+    let scPieces = [{ id: 1, w: 60, h: 60, qty: 1, desc: '', shape: 'rect' }];
+    let scPieceIdSeq = 1;
+
+    function scGetAvailableSizes() {
+        const type = document.getElementById('sc-material-type')?.value;
+        if (type === 'alucobond') return scAlucobondSizes.map(s => ({ name: s.name, w: s.w, h: s.h }));
+        if (type === 'perspex') return scPerspexSizes.map(s => ({ name: s.name, w: s.w, h: s.h }));
+        return scPvcSizes.map(s => ({ name: s.name, w: s.w, h: s.h }));
+    }
+
+    function updateScThicknessSelect() {
+        const type = document.getElementById('sc-material-type')?.value;
+        const sel = document.getElementById('sc-material-thickness');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">-- בחר עובי --</option>';
+        if (!type) return;
+        if (type === 'pvc') {
+            (pvcThicknesses || []).forEach((t, i) => {
+                sel.innerHTML += `<option value="pvc_${i}">${t.mm} מ"מ (₪${t.cost}/מ"ר)</option>`;
+            });
+        } else if (type === 'perspex') {
+            (perspexThicknesses || []).forEach((t, i) => {
+                sel.innerHTML += `<option value="perspex_${i}">${t.mm} מ"מ (₪${t.cost}/מ"ר)</option>`;
+            });
+        } else if (type === 'alucobond') {
+            const cost = parseFloat(document.getElementById('setting-cost-alucobond')?.value) || parseFloat(localStorage.getItem('costAlucobond')) || 60;
+            sel.innerHTML += `<option value="alucobond">3 מ"מ (₪${cost}/מ"ר)</option>`;
+        }
+    }
+
+    function updateScSheetSizeSelect() {}
+
+    function scAddPieceRow() {
+        scPieces.push({ id: ++scPieceIdSeq, w: 60, h: 60, qty: 1, desc: '', shape: 'rect' });
+        renderScPiecesTable();
+        calculateSheetCut();
+    }
+
+    function scRemovePiece(id) {
+        if (scPieces.length <= 1) return;
+        scPieces = scPieces.filter(p => p.id !== id);
+        renderScPiecesTable();
+        calculateSheetCut();
+    }
+
+    function scPieceChanged(id, field, val) {
+        const p = scPieces.find(p => p.id === id);
+        if (!p) return;
+        if (field === 'desc' || field === 'shape') {
+            p[field] = val;
+            if (field === 'shape') {
+                if (val === 'circle') p.h = p.w;
+                renderScPiecesTable(); // רק בשינוי צורה צריך רנדר
+                return;
+            }
+        } else {
+            p[field] = parseFloat(val) || 0;
+            if (field === 'w' && p.shape === 'circle') p.h = p.w;
+        }
+        calculateSheetCut(); // רק חישוב, בלי רנדר
+    }
+
+    function renderScPiecesTable() {
+        const tbody = document.getElementById('sc-pieces-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = scPieces.map(p => {
+            const isCircle = p.shape === 'circle';
+            return `<tr>
+                <td><select onchange="scPieceChanged(${p.id},'shape',this.value)" style="width:80px;">
+                    <option value="rect" ${!isCircle?'selected':''}>⬜ רבוע</option>
+                    <option value="circle" ${isCircle?'selected':''}>⭕ עיגול</option>
+                </select></td>
+                <td><input type="number" value="${p.w}" min="1" step="1" style="width:75px;" oninput="scPieceChanged(${p.id},'w',this.value)"></td>
+                <td>${isCircle ? `<input type="number" value="${p.w}" style="width:75px;opacity:0.4;" readonly>` : `<input type="number" value="${p.h}" min="1" step="1" style="width:75px;" oninput="scPieceChanged(${p.id},'h',this.value)">`}</td>
+                <td><input type="number" value="${p.qty}" min="1" step="1" style="width:60px;" oninput="scPieceChanged(${p.id},'qty',this.value)"></td>
+                <td><input type="text" value="${p.desc}" placeholder="תיאור..." style="width:110px;" oninput="scPieceChanged(${p.id},'desc',this.value)"></td>
+                <td>${scPieces.length > 1 ? `<button onclick="scRemovePiece(${p.id})" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;">🗑️</button>` : ''}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function scGetMat() {
+        const matType = document.getElementById('sc-material-type')?.value;
+        const matThickId = document.getElementById('sc-material-thickness')?.value;
+        if (matType === 'pvc' && matThickId) {
+            const idx = parseInt(matThickId.replace('pvc_', ''));
+            const t = (pvcThicknesses || [])[idx];
+            if (t) return { name: `PVC ${t.mm}מ"מ`, costPerM2: t.cost };
+        } else if (matType === 'perspex' && matThickId) {
+            const idx = parseInt(matThickId.replace('perspex_', ''));
+            const t = (perspexThicknesses || [])[idx];
+            if (t) return { name: `פרספקס ${t.mm}מ"מ`, costPerM2: t.cost };
+        } else if (matType === 'alucobond' && matThickId) {
+            const cost = parseFloat(document.getElementById('setting-cost-alucobond')?.value) || parseFloat(localStorage.getItem('costAlucobond')) || 60;
+            return { name: 'אלוקובונד', costPerM2: cost };
+        }
+        return null;
+    }
+
+    // Grid nesting — לחתיכות זהות (כולה חתיכות מאותו גודל)
+    function scGridNesting(sheetW, sheetH, pw, ph, qty) {
+        const K = 0.003;
+        const cols = Math.floor((sheetW + K) / (pw + K));
+        const rows = Math.floor((sheetH + K) / (ph + K));
+        if (!cols || !rows) return null;
+        const placed = [];
+        let count = 0;
+        outer: for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (count >= qty) break outer;
+                placed.push({ x: c*(pw+K), y: r*(ph+K), w: pw, h: ph, rotated: false, shape: 'rect', label: `${Math.round(pw*100)}x${Math.round(ph*100)}` });
+                count++;
+            }
+        }
+        return placed.length === qty ? placed : null;
+    }
+
+    function scMultiNesting(sheetW, sheetH, pieces) {
+        const KERF = 0.003;
+        let remaining = [];
+        pieces.forEach(p => {
+            for (let i = 0; i < p.qty; i++)
+                remaining.push({ w: p.w / 100, h: p.h / 100, shape: p.shape || 'rect', label: p.desc || `${p.w}x${p.h}` });
+        });
+        remaining.sort((a, b) => (b.w * b.h) - (a.w * a.h));
+
+        // אם כל החתיכות זהות — נסה grid בשני כיוונים
+        const allSame = remaining.every(p => Math.abs(p.w - remaining[0].w) < 0.001 && Math.abs(p.h - remaining[0].h) < 0.001);
+        if (allSame && remaining.length > 0 && remaining[0].shape !== 'circle') {
+            const pw = remaining[0].w, ph = remaining[0].h;
+            const qty = remaining.length;
+            const K = 0.003;
+
+            // חשב בלאי בפועל לכל כיוון (לכמות המבוקשת)
+            const calcWaste = (ow, oh) => {
+                const cols = Math.floor((sheetW+K)/(ow+K));
+                const rows = Math.floor((sheetH+K)/(oh+K));
+                if (!cols || !rows) return Infinity;
+                const sheetsNeeded = Math.ceil(qty / (cols * rows));
+                return sheetsNeeded * sheetW * sheetH - qty * pw * ph;
+            };
+
+            const waste1 = calcWaste(pw, ph);
+            const waste2 = calcWaste(ph, pw);
+
+            let bestPw = pw, bestPh = ph, bestRot = false;
+            if (waste2 < waste1 - 0.0001) {
+                bestPw = ph; bestPh = pw; bestRot = true;
+            } else if (Math.abs(waste1 - waste2) < 0.0001 && Math.abs(pw - ph) > 0.001) {
+                // בלאי שווה — בחר לפי פחות חיתוכים (פחות שורות)
+                const rows1 = Math.ceil(qty / Math.floor((sheetW+K)/(pw+K)));
+                const rows2 = Math.ceil(qty / Math.floor((sheetW+K)/(ph+K)));
+                if (rows2 < rows1) { bestPw = ph; bestPh = pw; bestRot = true; }
+            }
+
+            const grid = scGridNesting(sheetW, sheetH, bestPw, bestPh, qty);
+            if (grid) {
+                return grid.map(i => ({ ...i, w: bestPw, h: bestPh, rotated: bestRot,
+                    label: `${Math.round(pw*100)}x${Math.round(ph*100)}` }));
+            }
+        }
+
+        // strip packing — לחתיכות מעורבות
+        const placed = [];
+        const shelves = [];
+
+        for (const piece of remaining) {
+            let fits = false;
+            const orientations = piece.shape === 'circle'
+                ? [[piece.w, piece.h, false]]
+                : Math.abs(piece.w - piece.h) > 0.0001
+                    ? [[piece.w, piece.h, false], [piece.h, piece.w, true]]
+                    : [[piece.w, piece.h, false]];
+
+            // נסה מדף קיים — בחר עם הכי פחות בזבוז
+            let bestOption = null;
+            for (const [pw, ph, rot] of orientations) {
+                if (pw > sheetW + 0.001 || ph > sheetH + 0.001) continue;
+                for (const shelf of shelves) {
+                    if (pw <= shelf.remW + 0.001 && ph <= shelf.h + 0.001) {
+                        const waste = shelf.remW - pw;
+                        if (!bestOption || waste < bestOption.waste)
+                            bestOption = { shelf, pw, ph, rot, waste };
+                    }
+                }
+            }
+            if (bestOption) {
+                const { shelf, pw, ph, rot } = bestOption;
+                placed.push({ x: sheetW - shelf.remW, y: shelf.y, w: pw, h: ph, rotated: rot, shape: piece.shape, label: piece.label });
+                shelf.remW -= pw + KERF;
+                fits = true;
+            }
+
+            // פתח מדף חדש — בחר כיוון שמשאיר הכי מעט גובה
+            if (!fits) {
+                const usedH = shelves.reduce((s, sh) => s + sh.h, 0);
+                let bestNew = null;
+                for (const [pw, ph, rot] of orientations) {
+                    if (pw > sheetW + 0.001) continue;
+                    if (ph + KERF <= sheetH - usedH + 0.001) {
+                        if (!bestNew || ph < bestNew.ph)
+                            bestNew = { pw, ph, rot };
+                    }
+                }
+                if (bestNew) {
+                    const { pw, ph, rot } = bestNew;
+                    shelves.push({ y: usedH, remW: sheetW - pw - KERF, h: ph + KERF });
+                    placed.push({ x: 0, y: usedH, w: pw, h: ph, rotated: rot, shape: piece.shape, label: piece.label });
+                    fits = true;
+                }
+            }
+
+            if (!fits) return null;
+        }
+        return placed;
+    }
+
+    function calculateSheetCut() {
+        const mat = scGetMat();
+        const cutPrice = parseFloat(document.getElementById('sc-cut-price')?.value) || 0;
+        const retailPerSheet = parseFloat(document.getElementById('sc-retail-per-sheet')?.value) || 0;
+        const resultDiv = document.getElementById('sc-result');
+        const sheetsResults = document.getElementById('sc-sheets-results');
+
+        if (!mat || !scPieces.length) { if (resultDiv) resultDiv.style.display = 'none'; return; }
+        const validPieces = scPieces.filter(p => p.w > 0 && p.h > 0 && p.qty > 0);
+        if (!validPieces.length) { if (resultDiv) resultDiv.style.display = 'none'; return; }
+
+        const sizes = scGetAvailableSizes();
+        const totalPieces = validPieces.reduce((s, p) => s + p.qty, 0);
+        const totalArea = validPieces.reduce((s, p) => s + (p.w / 100) * (p.h / 100) * p.qty, 0);
+
+        const results = [];
+        for (const sz of sizes) {
+            let leftover = [];
+            for (const p of validPieces) for (let i = 0; i < p.qty; i++) leftover.push({ w: p.w, h: p.h, shape: p.shape||'rect', desc: p.desc || `${p.w}x${p.h}` });
+
+            let sheetsNeeded = 0, allPlaced = [], ok = true;
+            while (leftover.length > 0 && sheetsNeeded < 30) {
+                const placed = scMultiNesting(sz.w, sz.h, leftover.map(l => ({ w: l.w, h: l.h, qty: 1, shape: l.shape, desc: l.desc })));
+                if (!placed || placed.length === 0) { ok = false; break; }
+                allPlaced.push({ sheet: sheetsNeeded + 1, items: placed });
+                sheetsNeeded++;
+                leftover = leftover.slice(placed.length);
+            }
+            if (!ok || leftover.length > 0) continue;
+
+            const sheetArea = sz.w * sz.h;
+            // בלאי אמיתי: שטח שמנוצל כולל חתיכות + שטח חיתוכים
+            const placedArea = allPlaced.reduce((s, sh) =>
+                s + sh.items.reduce((ss, i) => ss + i.w * i.h, 0), 0);
+            const waste = Math.round((1 - placedArea / (sheetsNeeded * sheetArea)) * 100);
+            // ספירת חיתוכים — כל קו חיתוך ייחודי (אופקי או אנכי)
+            // אופקיים: כל Y-גבול בין שורות (= מספר שורות - 1 ... אבל לפי שורות בפועל)
+            // אנכיים: בכל שורה, X-גבולות בין חתיכות
+            const cuts = allPlaced.reduce((total, sh) => {
+                // קבץ לפי שורה (Y ייחודי)
+                const rowMap = {};
+                sh.items.forEach(item => {
+                    const yKey = Math.round(item.y * 10000);
+                    if (!rowMap[yKey]) rowMap[yKey] = [];
+                    rowMap[yKey].push(item);
+                });
+                const rowKeys = Object.keys(rowMap).sort((a,b) => a-b);
+                const horizCuts = Math.max(0, rowKeys.length - 1);
+                const vertCuts = rowKeys.reduce((s, yk) => s + Math.max(0, rowMap[yk].length - 1), 0);
+
+                // חיתוך שארית תחתית
+                const maxY = Math.max(...sh.items.map(i => i.y + i.h));
+                const wasteCutBottom = (sz.h - maxY) > 0.005 ? 1 : 0;
+
+                // חיתוך שארית ימין (בשורה עם הכי הרבה חתיכות)
+                const maxXperRow = rowKeys.map(yk => Math.max(...rowMap[yk].map(i => i.x + i.w)));
+                const maxX = Math.max(...maxXperRow);
+                const wasteCutRight = (sz.w - maxX) > 0.005 ? 1 : 0;
+
+                return total + horizCuts + vertCuts + wasteCutBottom + wasteCutRight;
+            }, 0);
+            const cost = sheetsNeeded * sheetArea * mat.costPerM2 + cuts * cutPrice;
+            const retail = retailPerSheet > 0 ? sheetsNeeded * retailPerSheet + cuts * cutPrice : 0;
+            results.push({ sz, sheetsNeeded, waste, cuts, cost, retail, allPlaced });
+        }
+
+        if (!results.length) {
+            if (resultDiv) { resultDiv.style.display = 'block'; document.getElementById('sc-result-text').innerHTML = '⚠️ החתיכות גדולות מדי לכל גדלי הפלטות הזמינות.'; sheetsResults.innerHTML = ''; }
+            return;
+        }
+        // מיין לפי עלות כוללת (חומר + חיתוכים) — זה כבר משלב בלאי + חיתוכים
+        // שניות: פחות חיתוכים, שלישית: פחות בלאי
+        results.sort((a, b) => {
+            if (Math.abs(a.cost - b.cost) > 0.5) return a.cost - b.cost;
+            if (a.cuts !== b.cuts) return a.cuts - b.cuts;
+            return a.waste - b.waste;
+        });
+        const best = results[0];
+        const retailTotal = document.getElementById('sc-retail-total');
+        if (retailTotal) retailTotal.value = best.retail.toFixed(2);
+
+        // שמור תוצאות לשימוש ה-picker
+        window._scResults = results;
+
+        // טקסט סיכום
+        document.getElementById('sc-result-text').innerHTML =
+            `📦 <strong>חומר:</strong> ${mat.name} | <strong>סה"כ חתיכות:</strong> ${totalPieces}<br>` +
+            `🏆 <strong>מומלץ:</strong> פלטה ${best.sz.name} | ${best.sheetsNeeded} פלטות | בלאי: ${best.waste}% | חיתוכים: ${best.cuts} | עלות: ₪${best.cost.toFixed(0)}`;
+
+        // מלא picker — מסודר לפי בלאי→חיתוכים→עלות
+        const picker = document.getElementById('sc-size-picker');
+        if (picker) {
+            picker.innerHTML = '<option value="">-- בחר גודל אחר --</option>' +
+                results.map((r, i) => `<option value="${i}">${r.sz.name} | בלאי ${r.waste}% | ${r.cuts} חיתוכים | ₪${r.cost.toFixed(0)}</option>`).join('');
+        }
+
+        // הצג את הטוב ביותר
+        scRenderResult(best);
+        if (resultDiv) resultDiv.style.display = 'block';
+    }
+
+    function scShowSize(idx) {
+        if (idx === '' || !window._scResults) return;
+        scRenderResult(window._scResults[parseInt(idx)]);
+    }
+
+    function scRenderResult(r) {
+        const container = document.getElementById('sc-sheets-results');
+        if (!container) return;
+        container.innerHTML = `
+            <div style="border:2px solid #14b8a6;border-radius:10px;padding:12px;background:rgba(20,184,166,0.08);">
+                <div style="font-size:13px;color:#94a3b8;margin-bottom:10px;">
+                    פלטה: <strong style="color:#14b8a6;">${r.sz.name}</strong> | ${r.sheetsNeeded} פלטות | ${r.cuts} חיתוכים | בלאי ${r.waste}% | <strong style="color:#14b8a6;">₪${r.cost.toFixed(0)}</strong>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+                    ${r.allPlaced.map(sh => scMultiSVG(r.sz.w, r.sz.h, sh.items, sh.sheet, r.sheetsNeeded)).join('')}
+                </div>
+            </div>`;
+    }
+
+    function scMultiSVG(sheetW, sheetH, items, sheetNum, totalSheets) {
+        const maxW = 280, maxH = 190, margin = 22;
+        const scale = Math.min((maxW - margin*2) / sheetW, (maxH - margin*2) / sheetH);
+        const svgW = Math.round(sheetW * scale + margin * 2);
+        const svgH = Math.round(sheetH * scale + margin * 2);
+        const colors = ['#14b8a6','#6366f1','#f59e0b','#ec4899','#22c55e','#3b82f6','#f97316','#a855f7'];
+        const labelMap = {};
+        let colorIdx = 0;
+
+        // מצא שאריות — האזור שלא מכוסה
+        const KERF = 0.003;
+        let maxRight = 0, maxBottom = 0;
+        items.forEach(item => {
+            maxRight = Math.max(maxRight, item.x + item.w);
+            maxBottom = Math.max(maxBottom, item.y + item.h);
+        });
+        // הוסף KERF של החיתוך האחרון (הפרדת השארית)
+        const wasteRight = sheetW - maxRight - KERF;
+        const wasteBottom = sheetH - maxBottom - KERF;
+
+        const shapes = items.map(item => {
+            if (!labelMap[item.label]) labelMap[item.label] = colors[colorIdx++ % colors.length];
+            const col = labelMap[item.label];
+            const x = margin + item.x * scale, y = margin + item.y * scale;
+            const rw = item.w * scale, rh = item.h * scale;
+            const wCm = Math.round(item.w * 100), hCm = Math.round(item.h * 100);
+            const labelTxt = wCm === hCm ? `⌀${wCm}` : `${wCm}×${hCm}`;
+
+            if (item.shape === 'circle') {
+                const cx = x + rw/2, cy = y + rh/2, r = Math.min(rw, rh) / 2;
+                return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${rw.toFixed(1)}" height="${rh.toFixed(1)}" fill="none" stroke="#334155" stroke-width="0.5" stroke-dasharray="2,2"/>
+                    <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${col}" fill-opacity="0.75" stroke="#fff" stroke-width="0.8"/>
+                    ${r > 10 ? `<text x="${cx.toFixed(1)}" y="${(cy+4).toFixed(1)}" text-anchor="middle" fill="#fff" font-size="8" font-family="Arial">${labelTxt}</text>` : ''}`;
+            } else {
+                return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${rw.toFixed(1)}" height="${rh.toFixed(1)}" fill="${col}" fill-opacity="0.75" stroke="#fff" stroke-width="0.8" rx="2"/>
+                    ${rw > 22 && rh > 12 ? `<text x="${(x+rw/2).toFixed(1)}" y="${(y+rh/2+4).toFixed(1)}" text-anchor="middle" fill="#fff" font-size="8" font-family="Arial">${labelTxt}</text>` : ''}`;
+            }
+        }).join('');
+
+        // שאריות באדום
+        let wasteRects = '';
+        if (wasteRight > 0.005) {
+            const wx = margin + (maxRight + KERF) * scale, ww = wasteRight * scale;
+            wasteRects += `<rect x="${wx.toFixed(1)}" y="${margin}" width="${ww.toFixed(1)}" height="${(maxBottom*scale).toFixed(1)}" fill="#7f1d1d" fill-opacity="0.35" stroke="#ef4444" stroke-width="0.5" stroke-dasharray="3,2"/>`;
+            const wasteCm = (wasteRight * 100).toFixed(1);
+            if (ww > 14) wasteRects += `<text x="${(wx+ww/2).toFixed(1)}" y="${(margin+maxBottom*scale/2+4).toFixed(1)}" text-anchor="middle" fill="#fca5a5" font-size="8" font-family="Arial">${wasteCm}ס"מ</text>`;
+        }
+        if (wasteBottom > 0.005) {
+            const wy = margin + (maxBottom + KERF) * scale, wh = wasteBottom * scale;
+            wasteRects += `<rect x="${margin}" y="${wy.toFixed(1)}" width="${(sheetW*scale).toFixed(1)}" height="${wh.toFixed(1)}" fill="#7f1d1d" fill-opacity="0.35" stroke="#ef4444" stroke-width="0.5" stroke-dasharray="3,2"/>`;
+            const wasteCm = (wasteBottom * 100).toFixed(1);
+            if (wh > 10) wasteRects += `<text x="${(margin+sheetW*scale/2).toFixed(1)}" y="${(wy+wh/2+4).toFixed(1)}" text-anchor="middle" fill="#fca5a5" font-size="8" font-family="Arial">${wasteCm}ס"מ</text>`;
+        }
+
+        return `<div style="text-align:center;">
+            <div style="font-size:10px;color:#94a3b8;margin-bottom:2px;">פלטה ${sheetNum}/${totalSheets}</div>
+            <svg width="${svgW + 24}" height="${svgH + 20}" style="border:1px solid #334155;border-radius:6px;background:#0f172a;display:block;">
+                <!-- תוכן הפלטה -->
+                <g transform="translate(20,0)">
+                    ${wasteRects}
+                    ${shapes}
+                    <rect x="${margin}" y="${margin}" width="${(sheetW*scale).toFixed(1)}" height="${(sheetH*scale).toFixed(1)}" fill="none" stroke="#475569" stroke-width="1.5"/>
+                </g>
+                <!-- מידה תחתית (רוחב) -->
+                <line x1="${(margin+20).toFixed(1)}" y1="${(svgH+2).toFixed(1)}" x2="${(margin+20+sheetW*scale).toFixed(1)}" y2="${(svgH+2).toFixed(1)}" stroke="#64748b" stroke-width="1"/>
+                <line x1="${(margin+20).toFixed(1)}" y1="${(svgH-2).toFixed(1)}" x2="${(margin+20).toFixed(1)}" y2="${(svgH+6).toFixed(1)}" stroke="#64748b" stroke-width="1"/>
+                <line x1="${(margin+20+sheetW*scale).toFixed(1)}" y1="${(svgH-2).toFixed(1)}" x2="${(margin+20+sheetW*scale).toFixed(1)}" y2="${(svgH+6).toFixed(1)}" stroke="#64748b" stroke-width="1"/>
+                <text x="${(margin+20+sheetW*scale/2).toFixed(1)}" y="${(svgH+14).toFixed(1)}" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="Arial">${(sheetW*100).toFixed(0)} ס"מ</text>
+                <!-- מידה שמאלית (גובה) -->
+                <line x1="10" y1="${margin}" x2="10" y2="${(margin+sheetH*scale).toFixed(1)}" stroke="#64748b" stroke-width="1"/>
+                <line x1="6" y1="${margin}" x2="14" y2="${margin}" stroke="#64748b" stroke-width="1"/>
+                <line x1="6" y1="${(margin+sheetH*scale).toFixed(1)}" x2="14" y2="${(margin+sheetH*scale).toFixed(1)}" stroke="#64748b" stroke-width="1"/>
+                <text x="8" y="${(margin+sheetH*scale/2).toFixed(1)}" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="Arial" transform="rotate(-90,8,${(margin+sheetH*scale/2).toFixed(1)})">${(sheetH*100).toFixed(0)} ס"מ</text>
+            </svg>
+        </div>`;
+    }
+
+    function pushSheetCutToGlobalOrder() {
+        const mat = scGetMat();
+        const cutPrice = parseFloat(document.getElementById('sc-cut-price')?.value) || 0;
+        const retail = parseFloat(document.getElementById('sc-retail-total')?.value) || 0;
+        const productName = document.getElementById('sc-product-name')?.value || 'גזירת פלטה';
+        if (!mat) { alert('נא לבחור חומר ועובי'); return; }
+        const validPieces = scPieces.filter(p => p.w > 0 && p.h > 0 && p.qty > 0);
+        if (!validPieces.length) { alert('נא להזין לפחות חתיכה אחת'); return; }
+
+        const sizes = scGetAvailableSizes();
+        let bestResult = null;
+        for (const sz of sizes) {
+            let leftover = [];
+            for (const p of validPieces) for (let i = 0; i < p.qty; i++) leftover.push({ w: p.w, h: p.h, desc: p.desc || `${p.w}x${p.h}` });
+            let sheets = 0, ok = true;
+            while (leftover.length > 0 && sheets < 30) {
+                const placed = scMultiNesting(sz.w, sz.h, leftover.map(l => ({ w: l.w, h: l.h, qty: 1, desc: l.desc })));
+                if (!placed || !placed.length) { ok = false; break; }
+                sheets++;
+                leftover = leftover.slice(placed.length);
+            }
+            if (!ok || leftover.length > 0) continue;
+            const cost = sheets * sz.w * sz.h * mat.costPerM2;
+            if (!bestResult || cost < bestResult.cost) bestResult = { sz, sheets, cost };
+        }
+        if (!bestResult) { alert('לא ניתן לסדר את החתיכות בפלטות הזמינות'); return; }
+        const desc = validPieces.map(p => `${p.qty}× ${p.w}×${p.h}ס"מ${p.desc?' ('+p.desc+')':''}`).join(' | ');
+        globalOrderItems.push({
+            productType: 'sheet_cut',
+            materialTitle: `🔲 ${mat.name} | ${productName}`,
+            desc: `${desc} | פלטה ${bestResult.sz.name} | ${bestResult.sheets} פלטות`,
+            addons: `עלות חומר: ₪${bestResult.cost.toFixed(0)}`,
+            costEstimate: bestResult.cost,
+            retailPreVat: retail,
+        });
+        renderGlobalOrder();
+        alert('✅ נוסף להצעה!');
+    }
+
+    function renderScSizes() {
+        const renderTable = (tbodyId, list, matKey) => {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
+            tbody.innerHTML = list.length === 0
+                ? `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">אין גדלים</td></tr>`
+                : list.map(s => `<tr><td>${s.name}</td><td>${s.w}</td><td>${s.h}</td>
+                    <td><button onclick="deleteScSizeFor('${matKey}',${s.id})" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;">🗑️</button></td></tr>`).join('');
+        };
+        renderTable('sc-pvc-tbody', scPvcSizes, 'pvc');
+        renderTable('sc-perspex-tbody', scPerspexSizes, 'perspex');
+        renderTable('sc-aluco-tbody', scAlucobondSizes, 'alucobond');
+    }
+
+    function addScSizeFor(mat) {
+        const name = document.getElementById(`sc-${mat === 'alucobond' ? 'aluco' : mat}-new-name`)?.value.trim();
+        const w = parseFloat(document.getElementById(`sc-${mat === 'alucobond' ? 'aluco' : mat}-new-w`)?.value) || 0;
+        const h = parseFloat(document.getElementById(`sc-${mat === 'alucobond' ? 'aluco' : mat}-new-h`)?.value) || 0;
+        if (!name || !w || !h) { alert('נא למלא את כל השדות'); return; }
+        if (mat === 'pvc') { scPvcSizes.push({ id: ++scPvcIdSeq, name, w, h }); document.getElementById('sc-pvc-new-name').value = ''; }
+        else if (mat === 'perspex') { scPerspexSizes.push({ id: ++scPerspexIdSeq, name, w, h }); document.getElementById('sc-perspex-new-name').value = ''; }
+        else if (mat === 'alucobond') { scAlucobondSizes.push({ id: ++scAlucoIdSeq, name, w, h }); document.getElementById('sc-aluco-new-name').value = ''; }
+        renderScSizes();
+    }
+
+    function deleteScSizeFor(mat, id) {
+        if (mat === 'pvc') scPvcSizes = scPvcSizes.filter(s => s.id !== id);
+        else if (mat === 'perspex') scPerspexSizes = scPerspexSizes.filter(s => s.id !== id);
+        else if (mat === 'alucobond') scAlucobondSizes = scAlucobondSizes.filter(s => s.id !== id);
+        renderScSizes();
+    }
+
+    // תאימות לאחור
+    function addScSize() { addScSizeFor('pvc'); }
+    function deleteScSize(id) { deleteScSizeFor('pvc', id); }
+    function updateScSizeSelect() {}
+
+</script>
 </body>
 </html>
