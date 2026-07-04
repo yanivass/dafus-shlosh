@@ -4201,6 +4201,9 @@
             document.getElementById('client-phone').value = "";
             document.getElementById('client-notes').value = 'המחירים אינם כוללים מע"מ (יתווסף כחוק בשורת הסיכום).\nתוקף הצעת המחיר הנו ל-30 יום ממועד הפקתה.\nביצוע העבודה מותנה באישור חתום של המפרט והגרפיקה הסופית.';
             document.getElementById('discount-value').value = "0";
+            // נקה את ה-localStorage של ההצעה הפעילה
+            ['globalOrderItems','activeClientName','activeClientPhone','activeClientNotes',
+             'activeDiscountValue','activeDiscountType','activeDiscountTiming'].forEach(k => localStorage.removeItem(k));
             renderLocalGroupTable(); 
             calculateGroupPrice(); 
             renderGlobalOrder(); 
