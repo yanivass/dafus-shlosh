@@ -1350,7 +1350,7 @@
                     <div class="row">
                         <div class="col form-group">
                             <label for="chem-template-select">בחר סוג פנקס:</label>
-                            <select id="chem-template-select" onchange="calculateChemicalNotebookPrice()">
+                            <select id="chem-template-select" onchange="renderChemQtySelector(); calculateChemicalNotebookPrice()">
                             </select>
                         </div>
                         <div class="col form-group">
@@ -1372,7 +1372,8 @@
                     </div>
                     <div class="row">
                         <div class="col form-group">
-                            <label for="chem-qty">כמות פנקסים:</label>
+                            <label for="chem-qty-tier-select">כמות פנקסים:</label>
+                            <select id="chem-qty-tier-select" onchange="handleChemQtyTierChange()" style="display:none;"></select>
                             <input type="number" id="chem-qty" value="10" min="1" oninput="calculateChemicalNotebookPrice()">
                         </div>
                         <div class="col form-group">
@@ -2168,7 +2169,7 @@
             </div>
             <div class="table-responsive" style="margin-top:10px;">
                 <table id="chem-templates-table" style="border:1px solid #ddd;">
-                    <thead><tr><th>שם</th><th>דף</th><th>פנקסים/דף</th><th>חיתוך</th><th>מבנה סט</th><th>סטים</th><th>כריכה</th><th>תוספת</th><th>פעולות</th></tr></thead>
+                    <thead><tr><th>שם</th><th>דף</th><th>פנקסים/דף</th><th>חיתוך</th><th>מבנה סט</th><th>סטים</th><th>כריכה</th><th>תוספת</th><th>מחירים לפי כמות</th><th>פעולות</th></tr></thead>
                     <tbody id="chem-templates-tbody"></tbody>
                 </table>
             </div>
@@ -3822,15 +3823,16 @@
 
     // מערך תבניות פנקסים
     let chemTemplates = [
-        { name: 'A4 לבן+צהוב', sheetSize: 'A4', perSheet: 1, cutSheet: false, type: 'לבן+צהוב', sets: 25, cover: 'front_and_back', extraCost: 0, extraDesc: '' },
-        { name: 'A5 לבן+צהוב', sheetSize: 'A4', perSheet: 2, cutSheet: true, type: 'לבן+צהוב', sets: 25, cover: 'front_and_back', extraCost: 0, extraDesc: '' },
-        { name: 'שישיות', sheetSize: 'A4', perSheet: 6, cutSheet: false, type: 'לבן+ורוד+צהוב', sets: 25, cover: 'front_and_back', extraCost: 1, extraDesc: 'פרפורציה נוספת' }
+        { name: 'A4 לבן+צהוב', sheetSize: 'A4', perSheet: 1, cutSheet: false, type: 'לבן+צהוב', sets: 25, cover: 'front_and_back', extraCost: 0, extraDesc: '', priceTiers: [] },
+        { name: 'A5 לבן+צהוב', sheetSize: 'A4', perSheet: 2, cutSheet: true, type: 'לבן+צהוב', sets: 25, cover: 'front_and_back', extraCost: 0, extraDesc: '', priceTiers: [] },
+        { name: 'שישיות', sheetSize: 'A4', perSheet: 6, cutSheet: false, type: 'לבן+ורוד+צהוב', sets: 25, cover: 'front_and_back', extraCost: 1, extraDesc: 'פרפורציה נוספת', priceTiers: [] }
     ];
 
     function toggleChemMode() {
         const mode = document.getElementById('chem-mode-select').value;
         document.getElementById('chem-template-mode').style.display = (mode === 'template') ? 'block' : 'none';
         document.getElementById('chem-custom-mode').style.display = (mode === 'custom') ? 'block' : 'none';
+        if (mode === 'template') renderChemQtySelector();
         calculateChemicalNotebookPrice();
     }
 
@@ -3845,6 +3847,49 @@
             opt.textContent = `${t.name} | ${t.type} | ${t.sets} סטים | ${t.sheetSize} (${t.perSheet}/דף, ${cutText}) | ${coverText}`;
             sel.appendChild(opt);
         });
+        renderChemQtySelector();
+    }
+
+    function renderChemQtySelector() {
+        const sel = document.getElementById('chem-qty-tier-select');
+        const numInput = document.getElementById('chem-qty');
+        if (!sel || !numInput) return;
+        const tplIdx = parseInt(document.getElementById('chem-template-select').value);
+        const tpl = chemTemplates[tplIdx];
+        if (tpl && tpl.priceTiers && tpl.priceTiers.length) {
+            sel.innerHTML = '';
+            tpl.priceTiers.forEach(pt => {
+                const opt = document.createElement('option');
+                opt.value = pt.qty;
+                opt.textContent = `${pt.qty} יח' — ₪${pt.price} סה"כ (₪${(pt.price / pt.qty).toFixed(2)} ליח')`;
+                sel.appendChild(opt);
+            });
+            const customOpt = document.createElement('option');
+            customOpt.value = 'custom';
+            customOpt.textContent = '✏️ כמות אחרת...';
+            sel.appendChild(customOpt);
+            sel.style.display = 'block';
+            sel.value = tpl.priceTiers[0].qty;
+            numInput.value = tpl.priceTiers[0].qty;
+            numInput.style.display = 'none';
+        } else {
+            sel.innerHTML = '';
+            sel.style.display = 'none';
+            numInput.style.display = 'block';
+        }
+    }
+
+    function handleChemQtyTierChange() {
+        const sel = document.getElementById('chem-qty-tier-select');
+        const numInput = document.getElementById('chem-qty');
+        if (sel.value === 'custom') {
+            numInput.style.display = 'block';
+            numInput.focus();
+        } else {
+            numInput.style.display = 'none';
+            numInput.value = sel.value;
+        }
+        calculateChemicalNotebookPrice();
     }
 
     function renderChemTemplatesTable() {
@@ -3852,11 +3897,46 @@
         tbody.innerHTML = '';
         const coverLabels = { 'none': 'ללא', 'back_only': 'אחורית', 'front_and_back': 'קד+אח' };
         chemTemplates.forEach((t, i) => {
+            if (!t.priceTiers) t.priceTiers = [];
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${t.name}</td><td>${t.sheetSize}</td><td>${t.perSheet}</td><td>${t.cutSheet ? 'כן' : 'לא'}</td><td>${t.type}</td><td>${t.sets}</td><td>${coverLabels[t.cover]}</td><td>${t.extraCost > 0 ? '₪' + t.extraCost + ' ' + t.extraDesc : '-'}</td><td><button class="btn-danger" onclick="removeChemTemplate(${i})">🗑️</button></td>`;
+            const tiersHtml = t.priceTiers.map((pt, ti) =>
+                `<span style="display:inline-block;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);border-radius:6px;padding:2px 6px;margin:2px;font-size:12px;white-space:nowrap;">${pt.qty} יח' = ₪${pt.price} <span style="cursor:pointer;color:#ef4444;font-weight:bold;" onclick="removePriceTier(${i},${ti})">✕</span></span>`
+            ).join('');
+            tr.innerHTML = `<td>${t.name}</td><td>${t.sheetSize}</td><td>${t.perSheet}</td><td>${t.cutSheet ? 'כן' : 'לא'}</td><td>${t.type}</td><td>${t.sets}</td><td>${coverLabels[t.cover]}</td><td>${t.extraCost > 0 ? '₪' + t.extraCost + ' ' + t.extraDesc : '-'}</td>
+                <td style="min-width:180px;">
+                    <div style="margin-bottom:4px;">${tiersHtml || '<span style="color:#94a3b8;font-size:12px;">אין מחירים קבועים</span>'}</div>
+                    <div style="display:flex;gap:4px;">
+                        <input type="number" id="chem-tier-qty-${i}" placeholder="כמות" style="width:60px;padding:4px;font-size:12px;">
+                        <input type="number" id="chem-tier-price-${i}" placeholder="מחיר סה״כ" style="width:80px;padding:4px;font-size:12px;">
+                        <button class="btn" style="padding:4px 8px;font-size:12px;" onclick="addPriceTier(${i})">➕</button>
+                    </div>
+                </td>
+                <td><button class="btn-danger" onclick="removeChemTemplate(${i})">🗑️</button></td>`;
             tbody.appendChild(tr);
         });
         renderChemTemplateSelect();
+    }
+
+    function addPriceTier(idx) {
+        const qtyInput = document.getElementById('chem-tier-qty-' + idx);
+        const priceInput = document.getElementById('chem-tier-price-' + idx);
+        const qty = parseInt(qtyInput.value);
+        const price = parseFloat(priceInput.value);
+        if (!qty || qty < 1 || !price || price <= 0) { alert('נא להזין כמות ומחיר תקינים'); return; }
+        if (!chemTemplates[idx].priceTiers) chemTemplates[idx].priceTiers = [];
+        // אם כבר קיים מחיר לאותה כמות - מחליפים אותו
+        const existingIdx = chemTemplates[idx].priceTiers.findIndex(pt => pt.qty === qty);
+        if (existingIdx >= 0) { chemTemplates[idx].priceTiers[existingIdx].price = price; }
+        else { chemTemplates[idx].priceTiers.push({ qty, price }); }
+        chemTemplates[idx].priceTiers.sort((a, b) => a.qty - b.qty);
+        renderChemTemplatesTable();
+        calculateChemicalNotebookPrice();
+    }
+
+    function removePriceTier(idx, tierIdx) {
+        chemTemplates[idx].priceTiers.splice(tierIdx, 1);
+        renderChemTemplatesTable();
+        calculateChemicalNotebookPrice();
     }
 
     function addChemTemplate() {
@@ -3871,7 +3951,8 @@
             sets: parseInt(document.getElementById('sett-tpl-sets').value) || 25,
             cover: document.getElementById('sett-tpl-cover').value,
             extraCost: parseFloat(document.getElementById('sett-tpl-extra-cost').value) || 0,
-            extraDesc: document.getElementById('sett-tpl-extra-desc').value.trim()
+            extraDesc: document.getElementById('sett-tpl-extra-desc').value.trim(),
+            priceTiers: []
         });
         document.getElementById('sett-tpl-name').value = '';
         document.getElementById('sett-tpl-extra-desc').value = '';
@@ -3894,6 +3975,7 @@
     function calculateChemicalNotebookPrice(userManuallyChangedRetail = false) {
         const mode = document.getElementById('chem-mode-select').value;
         let finalName, type, sheetSize, perSheet, cutSheet, setsPerNotebook, coverType, notebookCount, extraCost, extraDesc, retailField;
+        let tierMatch = null;
 
         if (mode === 'template') {
             const tplIdx = parseInt(document.getElementById('chem-template-select').value);
@@ -3915,6 +3997,9 @@
             extraCost = tpl.extraCost;
             extraDesc = tpl.extraDesc;
             retailField = document.getElementById('chem-retail-per-unit');
+            if (tpl.priceTiers && tpl.priceTiers.length) {
+                tierMatch = tpl.priceTiers.find(pt => pt.qty === notebookCount);
+            }
         } else {
             finalName = document.getElementById('chem-custom-doc-name').value || "פנקס מותאם אישית";
             type = document.getElementById('chem-custom-type').value;
@@ -4000,8 +4085,12 @@
         const totalCostOfProduction = finalClicksCost + totalPaperCost + finalCoversCost + coverClicksCost + finalBindingCost + totalExtraCost;
 
         if (!userManuallyChangedRetail) {
-            let recommended = Math.max(25, (totalCostOfProduction / notebookCount) * 2.5);
-            retailField.value = Math.round(recommended);
+            if (tierMatch) {
+                retailField.value = (Math.round((tierMatch.price / notebookCount) * 100) / 100);
+            } else {
+                let recommended = Math.max(25, (totalCostOfProduction / notebookCount) * 2.5);
+                retailField.value = Math.round(recommended);
+            }
         }
         const retailPricePreVatTotal = parseFloat(retailField.value) * notebookCount;
 
@@ -4042,6 +4131,7 @@
             <strong>📊 פריסה:</strong> ${parentSheetsPerLayer} דפי ${sheetSize} × ${layersCount} צבעים = ${totalImpressions} קליקים${cutSheet && perSheet > 1 ? ' (חיתוך: ' + perSheet + ' פנקסים מדף)' : perSheet > 1 ? ' (' + perSheet + ' יחידות בדף, ללא חיתוך)' : ''}.<br>
             <strong>📁 כריכה:</strong> ${coverDescription}.<br>
             ${extraCost > 0 ? '<strong>⚙️ תוספת:</strong> ' + extraDesc + ' (₪' + totalExtraCost.toFixed(2) + ').<br>' : ''}
+            ${tierMatch ? '<strong style="color:#22c55e;">🏷️ נמצא מחיר קבוע לכמות זו: ' + tierMatch.qty + ' יח\' = ₪' + tierMatch.price + '</strong><br>' : ''}
             עלות ייצור: <strong>₪${totalCostOfProduction.toFixed(2)}</strong> (₪${(totalCostOfProduction/notebookCount).toFixed(2)} לפנקס) | מכירה: <strong>₪${retailPricePreVatTotal.toFixed(2)}</strong> לפני מע"מ.
         `;
     }
@@ -4093,7 +4183,21 @@
                 if (raw.templateIdx >= 0) document.getElementById('chem-template-select').value = raw.templateIdx;
                 document.getElementById('chem-name-select').value = raw.nameSelect || 'פנקס חשבוניות';
                 document.getElementById('chem-custom-name').value = raw.customName || '';
+                renderChemQtySelector();
                 document.getElementById('chem-qty').value = raw.qty;
+                const tierSel = document.getElementById('chem-qty-tier-select');
+                if (tierSel.style.display !== 'none') {
+                    const tplIdx = parseInt(document.getElementById('chem-template-select').value);
+                    const tpl = chemTemplates[tplIdx];
+                    const matches = tpl && tpl.priceTiers && tpl.priceTiers.some(pt => pt.qty === raw.qty);
+                    if (matches) {
+                        tierSel.value = raw.qty;
+                        document.getElementById('chem-qty').style.display = 'none';
+                    } else {
+                        tierSel.value = 'custom';
+                        document.getElementById('chem-qty').style.display = 'block';
+                    }
+                }
                 document.getElementById('chem-retail-per-unit').value = raw.userRetail;
                 handleChemNameSelectChange();
             }
