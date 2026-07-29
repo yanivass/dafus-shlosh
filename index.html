@@ -1124,6 +1124,25 @@
                         <button class="btn btn-blue" type="button" onclick="addSizeToLocalGroup()">➕ הוסף מידה לקבוצה</button>
                     </div>
                 </div>
+                <div class="row" style="align-items: flex-end;">
+                    <div class="col form-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="input-split-enable" onchange="toggleManualSplitFields()">
+                            <label for="input-split-enable">✂️ פיצול ידני (למידה גדולה שרוצים לחלק בעצמנו)</label>
+                        </div>
+                    </div>
+                    <div class="col form-group" id="input-split-dim-group" style="display:none;">
+                        <label for="input-split-dim">את מה לפצל:</label>
+                        <select id="input-split-dim">
+                            <option value="width">רוחב</option>
+                            <option value="height">אורך/גובה</option>
+                        </select>
+                    </div>
+                    <div class="col form-group" id="input-split-panels-group" style="display:none;">
+                        <label for="input-split-panels">לכמה חלקים:</label>
+                        <input type="number" id="input-split-panels" min="2" value="2">
+                    </div>
+                </div>
 
                 <h4 style="margin-bottom: 5px;">רשימת המידות בקבוצה הנוכחית:</h4>
                 <div class="table-responsive">
@@ -1135,11 +1154,12 @@
                                 <th>אורך (ס"מ)</th>
                                 <th>כמות יחידות</th>
                                 <th>שטח נטו בשורה</th>
+                                <th>פיצול</th>
                                 <th>פעולה</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="6" style="text-align: center; color: #7f8c8d;">טרם הוכנסו מידות.</td></tr>
+                            <tr><td colspan="7" style="text-align: center; color: #7f8c8d;">טרם הוכנסו מידות.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -3581,14 +3601,25 @@
         syncApplicPrice();
     }
 
+    function toggleManualSplitFields() {
+        const enabled = document.getElementById('input-split-enable').checked;
+        document.getElementById('input-split-dim-group').style.display = enabled ? 'block' : 'none';
+        document.getElementById('input-split-panels-group').style.display = enabled ? 'block' : 'none';
+    }
+
     function addSizeToLocalGroup() {
         const wCm = parseFloat(document.getElementById('input-width').value) || 0;
         const hCm = parseFloat(document.getElementById('input-height').value) || 0;
         const q = parseInt(document.getElementById('input-qty').value) || 0;
         if (wCm <= 0 || hCm <= 0 || q <= 0) { alert("נא להזין מידות תקינות."); return; }
         const w = wCm / 100, h = hCm / 100;
-        localGroupSizes.push({ width: w, height: h, qty: q, sqm: w * h * q });
+        const splitEnabled = document.getElementById('input-split-enable').checked;
+        const manualSplitDim = splitEnabled ? document.getElementById('input-split-dim').value : null;
+        const manualSplitPanels = splitEnabled ? (parseInt(document.getElementById('input-split-panels').value) || 2) : null;
+        localGroupSizes.push({ width: w, height: h, qty: q, sqm: w * h * q, manualSplitDim, manualSplitPanels });
         document.getElementById('input-width').value = ""; document.getElementById('input-height').value = ""; document.getElementById('input-qty').value = "1";
+        document.getElementById('input-split-enable').checked = false; document.getElementById('input-split-dim').value = 'width'; document.getElementById('input-split-panels').value = 2;
+        toggleManualSplitFields();
         renderLocalGroupTable(); calculateGroupPrice();
     }
 
@@ -3596,11 +3627,12 @@
 
     function renderLocalGroupTable() {
         const tbody = document.querySelector('#local-sizes-table tbody');
-        if(localGroupSizes.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #7f8c8d;">טרם הוכנסו מידות.</td></tr>`; return; }
+        if(localGroupSizes.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #7f8c8d;">טרם הוכנסו מידות.</td></tr>`; return; }
         tbody.innerHTML = ""; let totalQty = 0;
         localGroupSizes.forEach((item, index) => {
             totalQty += item.qty;
-            tbody.innerHTML += `<tr><td>${index + 1}</td><td>${(item.width * 100).toFixed(0)} ס"מ</td><td>${(item.height * 100).toFixed(0)} ס"מ</td><td>${item.qty} יח'</td><td>${item.sqm.toFixed(2)} מ"ר</td><td><button class="btn btn-danger" style="padding:2px 8px;" onclick="removeLocalSize(${index})">❌</button></td></tr>`;
+            const splitLabel = item.manualSplitDim ? `${item.manualSplitPanels} חלקים (${item.manualSplitDim === 'width' ? 'רוחב' : 'אורך/גובה'})` : '<span style="color:#7f8c8d;">אוטומטי</span>';
+            tbody.innerHTML += `<tr><td>${index + 1}</td><td>${(item.width * 100).toFixed(0)} ס"מ</td><td>${(item.height * 100).toFixed(0)} ס"מ</td><td>${item.qty} יח'</td><td>${item.sqm.toFixed(2)} מ"ר</td><td>${splitLabel}</td><td><button class="btn btn-danger" style="padding:2px 8px;" onclick="removeLocalSize(${index})">❌</button></td></tr>`;
         });
         if(document.getElementById('material-select').value === 'banner' && !document.getElementById('add-rings').checked) {
             document.getElementById('add-rings').checked = true; toggleRingFields(); document.getElementById('rings-qty').value = totalQty * 4;
@@ -3626,15 +3658,21 @@
         return { lengthNeeded: chosenLength, calculatedCost: chosenLength * linearMeterCost, wastePercent: grossSqm > 0 ? (wasteSqm / grossSqm) * 100 : 0, wasteSqm: wasteSqm };
     }
 
-    // מפצל אוטומטית פריט שהרוחב שלו חורג מרוחב כל הגלילים הזמינים לרצועות שוות (הגובה/אורך תמיד נשאר שלם)
+    // מפצל פריט לרצועות שוות - לפי בחירה ידנית של המשתמש (מימד + מספר חלקים), או אוטומטית לפי רוחב אם הוא חורג מרוחב הגלילים
     function splitOversizedItemsForNesting(sizes, maxRollWidth) {
         let nestingItems = []; let splitNotices = [];
         sizes.forEach(item => {
-            if (maxRollWidth > 0 && item.width > maxRollWidth) {
-                const panels = Math.ceil(item.width / maxRollWidth);
-                const panelWidth = item.width / panels;
-                nestingItems.push({ width: panelWidth, height: item.height, qty: item.qty * panels });
-                splitNotices.push({ origW: item.width, origH: item.height, qty: item.qty, panels, panelWidth });
+            let panels = null, dim = null, auto = false;
+            if (item.manualSplitDim && item.manualSplitPanels >= 2) {
+                panels = item.manualSplitPanels; dim = item.manualSplitDim; auto = false;
+            } else if (maxRollWidth > 0 && item.width > maxRollWidth) {
+                panels = Math.ceil(item.width / maxRollWidth); dim = 'width'; auto = true;
+            }
+            if (panels && panels >= 2) {
+                const panelWidth = dim === 'width' ? item.width / panels : item.width;
+                const panelHeight = dim === 'height' ? item.height / panels : item.height;
+                nestingItems.push({ width: panelWidth, height: panelHeight, qty: item.qty * panels });
+                splitNotices.push({ origW: item.width, origH: item.height, qty: item.qty, panels, panelWidth, panelHeight, dim, auto });
             } else {
                 nestingItems.push({ width: item.width, height: item.height, qty: item.qty });
             }
@@ -3660,11 +3698,17 @@
             let sim = runNestingSimulation(roll.width, currentLen, currentCost, netSqmSum, nestingItems);
             if (sim) simulationResults.push({ width: roll.width, retailM2: (document.getElementById(`retail-${inputKey}`) ? parseFloat(document.getElementById(`retail-${inputKey}`).value) : roll.retailM2), ...sim });
         });
-        if (simulationResults.length === 0) { box.innerHTML = "⚠️ חריגה מרוחב מכונה! (הפריט חורג גם אחרי פיצול אוטומטי לרצועות)"; currentGroupTotals = { cost: 9999, retailPreVat: 0 }; return; }
+        if (simulationResults.length === 0) { box.innerHTML = "⚠️ חריגה מרוחב מכונה! (הפריט חורג גם אחרי הפיצול)"; currentGroupTotals = { cost: 9999, retailPreVat: 0 }; return; }
         let bestOption = [...simulationResults].sort((a, b) => a.calculatedCost - b.calculatedCost)[0];
         let splitHtml = '';
         if (splitNotices.length > 0) {
-            splitHtml = splitNotices.map(sn => `<div style="margin-bottom:6px;padding:8px;border-radius:8px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.35);color:#facc15;font-size:13px;">📐 <strong>פיצול אוטומטי:</strong> המידה ${(sn.origW*100).toFixed(0)}×${(sn.origH*100).toFixed(0)} ס"מ (${sn.qty} יח') — הרוחב חורג מרוחב כל הגלילים הזמינים (מקס' ${(maxRollWidthAvailable*100).toFixed(0)} ס"מ) — פוצלה אוטומטית ל-${sn.panels} רצועות שוות של ${(sn.panelWidth*100).toFixed(0)}×${(sn.origH*100).toFixed(0)} ס"מ שיודבקו זו לצד זו (הגובה נשאר שלם).</div>`).join('');
+            splitHtml = splitNotices.map(sn => {
+                const dimLabel = sn.dim === 'width' ? 'רוחב' : 'אורך/גובה';
+                const reason = sn.auto
+                    ? `הרוחב חורג מרוחב כל הגלילים הזמינים (מקס' ${(maxRollWidthAvailable*100).toFixed(0)} ס"מ) — פוצלה אוטומטית`
+                    : `פוצלה לפי בחירה ידנית (${dimLabel})`;
+                return `<div style="margin-bottom:6px;padding:8px;border-radius:8px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.35);color:#facc15;font-size:13px;">📐 <strong>פיצול${sn.auto ? ' אוטומטי' : ' ידני'}:</strong> המידה ${(sn.origW*100).toFixed(0)}×${(sn.origH*100).toFixed(0)} ס"מ (${sn.qty} יח') — ${reason} ל-${sn.panels} רצועות שוות של ${(sn.panelWidth*100).toFixed(0)}×${(sn.panelHeight*100).toFixed(0)} ס"מ שיודבקו זו לצד זו.</div>`;
+            }).join('');
         }
         let comparisonHtml = `📋 <strong>ניתוח פחת והמלצת הדפסה:</strong><br><div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:5px;">`;
         simulationResults.forEach(opt => { let isBest = opt.width === bestOption.width; comparisonHtml += `<div style="padding:8px; border-radius:8px; border:1px solid ${isBest ? 'rgba(34,197,94,0.3)':'rgba(255,255,255,0.05)'}; background:${isBest ? 'rgba(34,197,94,0.1)':'rgba(15,23,42,0.4)'}">גליל ${opt.width} מ': פחת ${opt.wastePercent.toFixed(1)}% (${opt.wasteSqm.toFixed(2)} מ"ר)</div>`; });
@@ -3672,7 +3716,7 @@
         if (splitNotices.length > 0) {
             descLines = descLines.map(line => {
                 const match = splitNotices.find(sn => line.startsWith(`${(sn.origW*100).toFixed(0)}x${(sn.origH*100).toFixed(0)}ס"מ`));
-                return match ? `${line} [פוצל ל-${match.panels} רצועות של ${(match.panelWidth*100).toFixed(0)}×${(match.origH*100).toFixed(0)} ס"מ]` : line;
+                return match ? `${line} [פוצל ל-${match.panels} רצועות של ${(match.panelWidth*100).toFixed(0)}×${(match.panelHeight*100).toFixed(0)} ס"מ]` : line;
             });
         }
 
