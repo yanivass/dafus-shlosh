@@ -1106,15 +1106,15 @@
             </div>
 
             <div class="inner-block">
-                <h3>2. הזנת מידות (מטרים):</h3>
+                <h3>2. הזנת מידות (ס"מ):</h3>
                 <div class="row" style="align-items: flex-end;">
                     <div class="col form-group">
-                        <label for="input-width">רוחב במטרים:</label>
-                        <input type="number" id="input-width" step="0.01" min="0" placeholder="0.00">
+                        <label for="input-width">רוחב (ס"מ):</label>
+                        <input type="number" id="input-width" step="0.5" min="0" placeholder="0">
                     </div>
                     <div class="col form-group">
-                        <label for="input-height">אורך/גובה במטרים:</label>
-                        <input type="number" id="input-height" step="0.01" min="0" placeholder="0.00">
+                        <label for="input-height">אורך/גובה (ס"מ):</label>
+                        <input type="number" id="input-height" step="0.5" min="0" placeholder="0">
                     </div>
                     <div class="col form-group">
                         <label for="input-qty">כמות יחידות:</label>
@@ -1131,8 +1131,8 @@
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>רוחב (מטר)</th>
-                                <th>אורך (מטר)</th>
+                                <th>רוחב (ס"מ)</th>
+                                <th>אורך (ס"מ)</th>
                                 <th>כמות יחידות</th>
                                 <th>שטח נטו בשורה</th>
                                 <th>פעולה</th>
@@ -2386,6 +2386,7 @@
 
         <br>
         <button class="btn" style="width: 100%; padding: 14px;" onclick="saveSettings()">שמור ועדכן את המערכת</button>
+        <button class="btn" style="width: 100%; padding: 14px; margin-top:10px; background:#475569;" onclick="printAllSettings()">🖨️ הדפס את כל ההגדרות</button>
     </div>
 </div>
 
@@ -3581,10 +3582,11 @@
     }
 
     function addSizeToLocalGroup() {
-        const w = parseFloat(document.getElementById('input-width').value) || 0;
-        const h = parseFloat(document.getElementById('input-height').value) || 0;
+        const wCm = parseFloat(document.getElementById('input-width').value) || 0;
+        const hCm = parseFloat(document.getElementById('input-height').value) || 0;
         const q = parseInt(document.getElementById('input-qty').value) || 0;
-        if (w <= 0 || h <= 0 || q <= 0) { alert("נא להזין מידות תקינות."); return; }
+        if (wCm <= 0 || hCm <= 0 || q <= 0) { alert("נא להזין מידות תקינות."); return; }
+        const w = wCm / 100, h = hCm / 100;
         localGroupSizes.push({ width: w, height: h, qty: q, sqm: w * h * q });
         document.getElementById('input-width').value = ""; document.getElementById('input-height').value = ""; document.getElementById('input-qty').value = "1";
         renderLocalGroupTable(); calculateGroupPrice();
@@ -3598,18 +3600,18 @@
         tbody.innerHTML = ""; let totalQty = 0;
         localGroupSizes.forEach((item, index) => {
             totalQty += item.qty;
-            tbody.innerHTML += `<tr><td>${index + 1}</td><td>${item.width.toFixed(2)} מ'</td><td>${item.height.toFixed(2)} מ'</td><td>${item.qty} יח'</td><td>${item.sqm.toFixed(2)} מ"ר</td><td><button class="btn btn-danger" style="padding:2px 8px;" onclick="removeLocalSize(${index})">❌</button></td></tr>`;
+            tbody.innerHTML += `<tr><td>${index + 1}</td><td>${(item.width * 100).toFixed(0)} ס"מ</td><td>${(item.height * 100).toFixed(0)} ס"מ</td><td>${item.qty} יח'</td><td>${item.sqm.toFixed(2)} מ"ר</td><td><button class="btn btn-danger" style="padding:2px 8px;" onclick="removeLocalSize(${index})">❌</button></td></tr>`;
         });
         if(document.getElementById('material-select').value === 'banner' && !document.getElementById('add-rings').checked) {
             document.getElementById('add-rings').checked = true; toggleRingFields(); document.getElementById('rings-qty').value = totalQty * 4;
         }
     }
 
-    function runNestingSimulation(rollWidth, rollLength, rollCost, netSqmSum) {
+    function runNestingSimulation(rollWidth, rollLength, rollCost, netSqmSum, itemsForNesting) {
         if(rollLength <= 0 || rollWidth <= 0) return null;
         let linearMeterCost = rollCost / rollLength; let totalLengthNormal = 0; let totalLengthRotated = 0; let fitNormal = true; let fitRotated = true;
         let consolidatedItems = [];
-        localGroupSizes.forEach(item => {
+        (itemsForNesting || localGroupSizes).forEach(item => {
             let existing = consolidatedItems.find(c => c.width === item.width && c.height === item.height);
             if (existing) existing.qty += item.qty; else consolidatedItems.push({ width: item.width, height: item.height, qty: item.qty });
         });
@@ -3624,27 +3626,55 @@
         return { lengthNeeded: chosenLength, calculatedCost: chosenLength * linearMeterCost, wastePercent: grossSqm > 0 ? (wasteSqm / grossSqm) * 100 : 0, wasteSqm: wasteSqm };
     }
 
+    // מפצל אוטומטית פריט שהרוחב שלו חורג מרוחב כל הגלילים הזמינים לרצועות שוות (הגובה/אורך תמיד נשאר שלם)
+    function splitOversizedItemsForNesting(sizes, maxRollWidth) {
+        let nestingItems = []; let splitNotices = [];
+        sizes.forEach(item => {
+            if (maxRollWidth > 0 && item.width > maxRollWidth) {
+                const panels = Math.ceil(item.width / maxRollWidth);
+                const panelWidth = item.width / panels;
+                nestingItems.push({ width: panelWidth, height: item.height, qty: item.qty * panels });
+                splitNotices.push({ origW: item.width, origH: item.height, qty: item.qty, panels, panelWidth });
+            } else {
+                nestingItems.push({ width: item.width, height: item.height, qty: item.qty });
+            }
+        });
+        return { nestingItems, splitNotices };
+    }
+
     function calculateGroupPrice() {
         const selectedGroup = document.getElementById('material-select').value;
         const box = document.getElementById('opt-box');
         if(localGroupSizes.length === 0) { box.innerHTML = "<strong>המלצת ניצול חומר לקבוצה:</strong> הוסף מידות כדי קבל ניתוח פריסה מדויק."; return; }
         let netSqmSum = 0; let totalItemsCount = 0; let descLines = [];
-        localGroupSizes.forEach(item => { netSqmSum += item.sqm; totalItemsCount += item.qty; descLines.push(`${item.width.toFixed(2)}x${item.height.toFixed(2)}מ' (${item.qty} יח')`); });
+        localGroupSizes.forEach(item => { netSqmSum += item.sqm; totalItemsCount += item.qty; descLines.push(`${(item.width*100).toFixed(0)}x${(item.height*100).toFixed(0)}ס"מ (${item.qty} יח')`); });
         const groupData = materialGroups.find(g => g.id === selectedGroup); let simulationResults = [];
+        const maxRollWidthAvailable = groupData.rolls.length ? Math.max(...groupData.rolls.map(r => r.width)) : 0;
+        const { nestingItems, splitNotices } = splitOversizedItemsForNesting(localGroupSizes, maxRollWidthAvailable);
         groupData.rolls.forEach((roll, idx) => {
             const inputKey = `${selectedGroup}_${idx}`;
             const elLen = document.getElementById(`len-${inputKey}`);
             const elCost = document.getElementById(`cost-${inputKey}`);
             const currentLen = elLen ? parseFloat(elLen.value) : roll.length;
             const currentCost = elCost ? parseFloat(elCost.value) : roll.cost;
-            let sim = runNestingSimulation(roll.width, currentLen, currentCost, netSqmSum);
+            let sim = runNestingSimulation(roll.width, currentLen, currentCost, netSqmSum, nestingItems);
             if (sim) simulationResults.push({ width: roll.width, retailM2: (document.getElementById(`retail-${inputKey}`) ? parseFloat(document.getElementById(`retail-${inputKey}`).value) : roll.retailM2), ...sim });
         });
-        if (simulationResults.length === 0) { box.innerHTML = "⚠️ חריגה מרוחב מכונה!"; currentGroupTotals = { cost: 9999, retailPreVat: 0 }; return; }
+        if (simulationResults.length === 0) { box.innerHTML = "⚠️ חריגה מרוחב מכונה! (הפריט חורג גם אחרי פיצול אוטומטי לרצועות)"; currentGroupTotals = { cost: 9999, retailPreVat: 0 }; return; }
         let bestOption = [...simulationResults].sort((a, b) => a.calculatedCost - b.calculatedCost)[0];
+        let splitHtml = '';
+        if (splitNotices.length > 0) {
+            splitHtml = splitNotices.map(sn => `<div style="margin-bottom:6px;padding:8px;border-radius:8px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.35);color:#facc15;font-size:13px;">📐 <strong>פיצול אוטומטי:</strong> המידה ${(sn.origW*100).toFixed(0)}×${(sn.origH*100).toFixed(0)} ס"מ (${sn.qty} יח') — הרוחב חורג מרוחב כל הגלילים הזמינים (מקס' ${(maxRollWidthAvailable*100).toFixed(0)} ס"מ) — פוצלה אוטומטית ל-${sn.panels} רצועות שוות של ${(sn.panelWidth*100).toFixed(0)}×${(sn.origH*100).toFixed(0)} ס"מ שיודבקו זו לצד זו (הגובה נשאר שלם).</div>`).join('');
+        }
         let comparisonHtml = `📋 <strong>ניתוח פחת והמלצת הדפסה:</strong><br><div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:5px;">`;
         simulationResults.forEach(opt => { let isBest = opt.width === bestOption.width; comparisonHtml += `<div style="padding:8px; border-radius:8px; border:1px solid ${isBest ? 'rgba(34,197,94,0.3)':'rgba(255,255,255,0.05)'}; background:${isBest ? 'rgba(34,197,94,0.1)':'rgba(15,23,42,0.4)'}">גליל ${opt.width} מ': פחת ${opt.wastePercent.toFixed(1)}% (${opt.wasteSqm.toFixed(2)} מ"ר)</div>`; });
-        box.innerHTML = comparisonHtml + `</div>`;
+        box.innerHTML = splitHtml + comparisonHtml + `</div>`;
+        if (splitNotices.length > 0) {
+            descLines = descLines.map(line => {
+                const match = splitNotices.find(sn => line.startsWith(`${(sn.origW*100).toFixed(0)}x${(sn.origH*100).toFixed(0)}ס"מ`));
+                return match ? `${line} [פוצל ל-${match.panels} רצועות של ${(match.panelWidth*100).toFixed(0)}×${(match.origH*100).toFixed(0)} ס"מ]` : line;
+            });
+        }
 
         let productionCost = bestOption.calculatedCost; let retailPrice = netSqmSum * bestOption.retailM2; let addonsList = [];
         let addonsRaw = {
@@ -4444,6 +4474,63 @@
         stampDatabase[cat] = stampDatabase[cat].filter(i => i.id !== id);
         initStampSettings();
         saveSettings();
+    }
+
+    function printAllSettings() {
+        const sections = document.querySelectorAll('.settings-section');
+        let bodyHtml = '';
+        sections.forEach(section => {
+            const clone = section.cloneNode(true);
+            clone.querySelectorAll('button').forEach(b => b.remove());
+            clone.querySelectorAll('input').forEach(inp => {
+                const span = document.createElement('span');
+                span.className = 'printed-value';
+                if (inp.type === 'checkbox') {
+                    span.textContent = inp.checked ? '✓ כן' : '✗ לא';
+                } else {
+                    span.textContent = (inp.value !== '' && inp.value !== null) ? inp.value : '—';
+                }
+                inp.replaceWith(span);
+            });
+            clone.querySelectorAll('select').forEach(sel => {
+                const span = document.createElement('span');
+                span.className = 'printed-value';
+                span.textContent = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : '—';
+                sel.replaceWith(span);
+            });
+            clone.removeAttribute('style');
+            clone.style.display = 'block';
+            bodyHtml += clone.outerHTML;
+        });
+
+        const printCss = `
+            body{font-family:Arial,Heebo,sans-serif;padding:20px;color:#111;direction:rtl;}
+            h1{text-align:center;margin-bottom:4px;}
+            .print-date{text-align:center;color:#666;font-size:13px;margin-bottom:24px;}
+            h3{background:#eee;padding:6px 10px;border-radius:4px;margin-top:26px;}
+            h4{margin-top:16px;margin-bottom:6px;border-bottom:1px solid #ccc;padding-bottom:2px;font-size:15px;}
+            p{font-size:12px;color:#666;}
+            table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12px;}
+            table, th, td{border:1px solid #999;}
+            th,td{padding:4px 8px;text-align:right;}
+            .row{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:4px;}
+            .form-group{flex:1;min-width:200px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px dotted #ccc;padding:4px 0;font-size:13px;}
+            .form-group label{color:#333;white-space:nowrap;margin-left:10px;}
+            .checkbox-item{display:flex;gap:6px;align-items:center;font-size:13px;}
+            .printed-value{font-weight:bold;color:#000;}
+            .section-block{page-break-inside:avoid;}
+            .table-responsive{overflow:visible;}
+        `;
+
+        const w = window.open('', '_blank');
+        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8">
+            <title>הגדרות מערכת - הדפסה</title><style>${printCss}</style></head><body>
+            <h1>🖨️ הגדרות מערכת - דפוס שלוש</h1>
+            <div class="print-date">הודפס בתאריך ${new Date().toLocaleDateString('he-IL')}</div>
+            ${bodyHtml}
+            </body></html>`);
+        w.document.close();
+        setTimeout(() => { w.focus(); w.print(); }, 400);
     }
 
     function saveSettings() {
