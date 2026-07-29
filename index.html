@@ -3637,7 +3637,7 @@
             const split = resolveItemSplit(item, maxRollWidthAvailable);
             let statusLabel;
             if (split.willSplit) {
-                statusLabel = `${split.auto ? '💡 מומלץ' : '✂️ נבחר'}: ${split.panels} חלקים (${split.dim === 'width' ? 'רוחב' : 'גובה'})`;
+                statusLabel = `${split.auto ? '💡 מומלץ' : '✂️ נבחר'}: ${split.panels} חלקים (${split.dim === 'width' ? 'רוחב' : 'גובה'}) → כל חלק ${(split.nestW*100).toFixed(1)}×${(split.nestH*100).toFixed(1)} ס"מ`;
             } else if (item.manualSplitDim === 'none') {
                 statusLabel = 'ללא פיצול (ידני)';
             } else {
@@ -3825,10 +3825,14 @@
         const splitPieces = pieces.filter(p => p.split.willSplit);
         if (splitPieces.length > 0) {
             splitPieces.forEach(p => {
-                boxHtml += `<div style="padding:6px 8px;border-radius:8px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.3);color:#facc15;font-size:12px;">✂️ ${(p.item.width*100).toFixed(0)}×${(p.item.height*100).toFixed(0)} ס"מ פוצלה ל-${p.split.panels} חלקים (${p.split.dim === 'width' ? 'רוחב' : 'גובה'})${p.split.auto ? ' — אוטומטי' : ' — ידני'}</div>`;
+                boxHtml += `<div style="padding:6px 8px;border-radius:8px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.3);color:#facc15;font-size:12px;">✂️ ${(p.item.width*100).toFixed(0)}×${(p.item.height*100).toFixed(0)} ס"מ פוצלה ל-${p.split.panels} חלקים (${p.split.dim === 'width' ? 'רוחב' : 'גובה'})${p.split.auto ? ' — אוטומטי' : ' — ידני'} — <strong>כל חלק יוצא ${(p.split.nestW*100).toFixed(1)}×${(p.split.nestH*100).toFixed(1)} ס"מ</strong></div>`;
             });
         }
-        boxHtml += `<div style="padding:8px;border-radius:8px;border:1px solid rgba(34,197,94,0.3);background:rgba(34,197,94,0.08);font-size:13px;">🧩 <strong>שילוב על גליל ${bestPlan.primaryRoll.width} מ':</strong> ${bestPlan.fitting.length} סוג/י מידה שולבו יחד באותה הדפסה — אורך נדרש: ${bestPlan.combinedLength.toFixed(2)} מ'.</div>`;
+        const fittingSizesList = bestPlan.fitting.map(p => `${(p.item.width*100).toFixed(0)}×${(p.item.height*100).toFixed(0)} ס"מ (${p.nestQty} יח'${p.split.willSplit ? ' לאחר פיצול' : ''})`).join(', ');
+        const combineLabel = bestPlan.fitting.length > 1
+            ? `🧩 <strong>שילוב על גליל ${bestPlan.primaryRoll.width} מ':</strong> המידות הבאות שולבו יחד באותה הדפסה: ${fittingSizesList}`
+            : `📏 <strong>הדפסה על גליל ${bestPlan.primaryRoll.width} מ':</strong> ${fittingSizesList}`;
+        boxHtml += `<div style="padding:8px;border-radius:8px;border:1px solid rgba(34,197,94,0.3);background:rgba(34,197,94,0.08);font-size:13px;">${combineLabel} — אורך נדרש: ${bestPlan.combinedLength.toFixed(2)} מ'.</div>`;
         bestPlan.notFittingAssignment.forEach(na => {
             boxHtml += `<div style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(15,23,42,0.4);font-size:13px;">${(na.piece.item.width*100).toFixed(0)}×${(na.piece.item.height*100).toFixed(0)} ס"מ (${na.piece.item.qty} יח') — רחבה מדי לגליל המשולב, קיבלה גליל נפרד: <strong>${na.roll.width} מ'</strong> (אורך ${na.length.toFixed(2)} מ').</div>`;
         });
@@ -3862,7 +3866,7 @@
         currentGroupTotals = {
             productType: 'wide_format', rawMaterialId: selectedGroup, rawFinishId: document.getElementById('finish-select').value,
             materialTitle: document.getElementById('material-select').options[document.getElementById('material-select').selectedIndex].text + (selectedGroup.includes('vinyl') ? (document.getElementById('finish-select').value === 'matte' ? " (מט)" : " (מבריק)") : ""),
-            desc: descLines.join(' | '), addons: addonsList.length > 0 ? addonsList.join(' + ') : "ללא תוספות", sqm: netSqmSum, cost: productionCost, retailPreVat: retailPrice, rawSizes: [...localGroupSizes], rawAddons: addonsRaw
+            desc: descLines.join(' | ') + ` | סה"כ שטח: ${netSqmSum.toFixed(2)} מ"ר`, addons: addonsList.length > 0 ? addonsList.join(' + ') : "ללא תוספות", sqm: netSqmSum, cost: productionCost, retailPreVat: retailPrice, rawSizes: [...localGroupSizes], rawAddons: addonsRaw
         };
     }
 
