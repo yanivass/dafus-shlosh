@@ -1124,27 +1124,9 @@
                         <button class="btn btn-blue" type="button" onclick="addSizeToLocalGroup()">➕ הוסף מידה לקבוצה</button>
                     </div>
                 </div>
-                <div class="row" style="align-items: flex-end;">
-                    <div class="col form-group">
-                        <div class="checkbox-item">
-                            <input type="checkbox" id="input-split-enable" onchange="toggleManualSplitFields()">
-                            <label for="input-split-enable">✂️ פיצול ידני (למידה גדולה שרוצים לחלק בעצמנו)</label>
-                        </div>
-                    </div>
-                    <div class="col form-group" id="input-split-dim-group" style="display:none;">
-                        <label for="input-split-dim">את מה לפצל:</label>
-                        <select id="input-split-dim">
-                            <option value="width">רוחב</option>
-                            <option value="height">אורך/גובה</option>
-                        </select>
-                    </div>
-                    <div class="col form-group" id="input-split-panels-group" style="display:none;">
-                        <label for="input-split-panels">לכמה חלקים:</label>
-                        <input type="number" id="input-split-panels" min="2" value="2">
-                    </div>
-                </div>
 
                 <h4 style="margin-bottom: 5px;">רשימת המידות בקבוצה הנוכחית:</h4>
+                <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">💡 כשמידה חורגת מרוחב הגלילים הזמינים, תופיע המלצת פיצול אוטומטית בעמודת "פיצול" — אפשר לשנות אותה או לבטל לגמרי.</p>
                 <div class="table-responsive">
                     <table id="local-sizes-table">
                         <thead>
@@ -3601,39 +3583,91 @@
         syncApplicPrice();
     }
 
-    function toggleManualSplitFields() {
-        const enabled = document.getElementById('input-split-enable').checked;
-        document.getElementById('input-split-dim-group').style.display = enabled ? 'block' : 'none';
-        document.getElementById('input-split-panels-group').style.display = enabled ? 'block' : 'none';
-    }
-
     function addSizeToLocalGroup() {
         const wCm = parseFloat(document.getElementById('input-width').value) || 0;
         const hCm = parseFloat(document.getElementById('input-height').value) || 0;
         const q = parseInt(document.getElementById('input-qty').value) || 0;
         if (wCm <= 0 || hCm <= 0 || q <= 0) { alert("נא להזין מידות תקינות."); return; }
         const w = wCm / 100, h = hCm / 100;
-        const splitEnabled = document.getElementById('input-split-enable').checked;
-        const manualSplitDim = splitEnabled ? document.getElementById('input-split-dim').value : null;
-        const manualSplitPanels = splitEnabled ? (parseInt(document.getElementById('input-split-panels').value) || 2) : null;
-        localGroupSizes.push({ width: w, height: h, qty: q, sqm: w * h * q, manualSplitDim, manualSplitPanels });
+        localGroupSizes.push({ width: w, height: h, qty: q, sqm: w * h * q, manualSplitDim: null, manualSplitPanels: null });
         document.getElementById('input-width').value = ""; document.getElementById('input-height').value = ""; document.getElementById('input-qty').value = "1";
-        document.getElementById('input-split-enable').checked = false; document.getElementById('input-split-dim').value = 'width'; document.getElementById('input-split-panels').value = 2;
-        toggleManualSplitFields();
         renderLocalGroupTable(); calculateGroupPrice();
     }
 
     function removeLocalSize(index) { localGroupSizes.splice(index, 1); renderLocalGroupTable(); calculateGroupPrice(); }
 
+    // מחליט אם ואיך פריט יפוצל: 'none' = פיצול בוטל ידנית, 'width'/'height' = פיצול ידני, null = החלטה אוטומטית
+    function resolveItemSplit(item, maxRollWidthAvailable) {
+        if (item.manualSplitDim === 'none') {
+            return { willSplit: false, auto: false, nestW: item.width, nestH: item.height, nestQty: item.qty };
+        }
+        if (item.manualSplitDim === 'width' || item.manualSplitDim === 'height') {
+            const panels = item.manualSplitPanels >= 2 ? item.manualSplitPanels : 1;
+            if (panels < 2) return { willSplit: false, auto: false, nestW: item.width, nestH: item.height, nestQty: item.qty };
+            const dim = item.manualSplitDim;
+            const nestW = dim === 'width' ? item.width / panels : item.width;
+            const nestH = dim === 'height' ? item.height / panels : item.height;
+            return { willSplit: true, auto: false, dim, panels, nestW, nestH, nestQty: item.qty * panels };
+        }
+        if (maxRollWidthAvailable > 0 && item.width > maxRollWidthAvailable) {
+            const panels = Math.ceil(item.width / maxRollWidthAvailable);
+            const nestW = item.width / panels;
+            return { willSplit: true, auto: true, dim: 'width', panels, nestW, nestH: item.height, nestQty: item.qty * panels };
+        }
+        return { willSplit: false, auto: false, nestW: item.width, nestH: item.height, nestQty: item.qty };
+    }
+
+    function updateItemSplit(index) {
+        const dimVal = document.getElementById('split-dim-' + index).value;
+        const panelsVal = parseInt(document.getElementById('split-panels-' + index).value) || 2;
+        localGroupSizes[index].manualSplitDim = (dimVal === 'auto') ? null : dimVal;
+        localGroupSizes[index].manualSplitPanels = (dimVal === 'width' || dimVal === 'height') ? Math.max(2, panelsVal) : null;
+        renderLocalGroupTable(); calculateGroupPrice();
+    }
+
     function renderLocalGroupTable() {
         const tbody = document.querySelector('#local-sizes-table tbody');
         if(localGroupSizes.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #7f8c8d;">טרם הוכנסו מידות.</td></tr>`; return; }
-        tbody.innerHTML = ""; let totalQty = 0;
+        const selectedGroup = document.getElementById('material-select').value;
+        const groupData = materialGroups.find(g => g.id === selectedGroup);
+        const maxRollWidthAvailable = groupData && groupData.rolls.length ? Math.max(...groupData.rolls.map(r => r.width)) : 0;
+        tbody.innerHTML = ""; let totalQty = 0; let totalSqm = 0;
         localGroupSizes.forEach((item, index) => {
-            totalQty += item.qty;
-            const splitLabel = item.manualSplitDim ? `${item.manualSplitPanels} חלקים (${item.manualSplitDim === 'width' ? 'רוחב' : 'אורך/גובה'})` : '<span style="color:#7f8c8d;">אוטומטי</span>';
-            tbody.innerHTML += `<tr><td>${index + 1}</td><td>${(item.width * 100).toFixed(0)} ס"מ</td><td>${(item.height * 100).toFixed(0)} ס"מ</td><td>${item.qty} יח'</td><td>${item.sqm.toFixed(2)} מ"ר</td><td>${splitLabel}</td><td><button class="btn btn-danger" style="padding:2px 8px;" onclick="removeLocalSize(${index})">❌</button></td></tr>`;
+            totalQty += item.qty; totalSqm += item.sqm;
+            const split = resolveItemSplit(item, maxRollWidthAvailable);
+            let statusLabel;
+            if (split.willSplit) {
+                statusLabel = `${split.auto ? '💡 מומלץ' : '✂️ נבחר'}: ${split.panels} חלקים (${split.dim === 'width' ? 'רוחב' : 'גובה'})`;
+            } else if (item.manualSplitDim === 'none') {
+                statusLabel = 'ללא פיצול (ידני)';
+            } else {
+                statusLabel = 'ללא צורך בפיצול';
+            }
+            const selVal = item.manualSplitDim === null ? 'auto' : item.manualSplitDim;
+            const panelsForInput = item.manualSplitPanels || (split.willSplit ? split.panels : 2);
+            tbody.innerHTML += `<tr>
+                <td>${index + 1}</td>
+                <td>${(item.width * 100).toFixed(0)} ס"מ</td>
+                <td>${(item.height * 100).toFixed(0)} ס"מ</td>
+                <td>${item.qty} יח'</td>
+                <td>${item.sqm.toFixed(2)} מ"ר</td>
+                <td style="min-width:170px;">
+                    <div style="font-size:11px;margin-bottom:3px;color:${split.auto ? '#facc15' : '#94a3b8'};">${statusLabel}</div>
+                    <div style="display:flex;gap:3px;">
+                        <select id="split-dim-${index}" style="width:64px;font-size:11px;padding:2px;">
+                            <option value="auto" ${selVal==='auto'?'selected':''}>אוטו'</option>
+                            <option value="none" ${selVal==='none'?'selected':''}>ללא</option>
+                            <option value="width" ${selVal==='width'?'selected':''}>רוחב</option>
+                            <option value="height" ${selVal==='height'?'selected':''}>גובה</option>
+                        </select>
+                        <input type="number" id="split-panels-${index}" min="2" value="${panelsForInput}" style="width:40px;font-size:11px;padding:2px;">
+                        <button class="btn" style="padding:2px 6px;font-size:11px;" onclick="updateItemSplit(${index})">✓</button>
+                    </div>
+                </td>
+                <td><button class="btn btn-danger" style="padding:2px 8px;" onclick="removeLocalSize(${index})">❌</button></td>
+            </tr>`;
         });
+        tbody.innerHTML += `<tr style="font-weight:bold;background:rgba(59,130,246,0.1);"><td colspan="4" style="text-align:left;">סה"כ (${totalQty} יח'):</td><td>${totalSqm.toFixed(2)} מ"ר</td><td colspan="2"></td></tr>`;
         if(document.getElementById('material-select').value === 'banner' && !document.getElementById('add-rings').checked) {
             document.getElementById('add-rings').checked = true; toggleRingFields(); document.getElementById('rings-qty').value = totalQty * 4;
         }
@@ -3658,69 +3692,150 @@
         return { lengthNeeded: chosenLength, calculatedCost: chosenLength * linearMeterCost, wastePercent: grossSqm > 0 ? (wasteSqm / grossSqm) * 100 : 0, wasteSqm: wasteSqm };
     }
 
-    // מפצל פריט לרצועות שוות - לפי בחירה ידנית של המשתמש (מימד + מספר חלקים), או אוטומטית לפי רוחב אם הוא חורג מרוחב הגלילים
-    function splitOversizedItemsForNesting(sizes, maxRollWidth) {
-        let nestingItems = []; let splitNotices = [];
-        sizes.forEach(item => {
-            let panels = null, dim = null, auto = false;
-            if (item.manualSplitDim && item.manualSplitPanels >= 2) {
-                panels = item.manualSplitPanels; dim = item.manualSplitDim; auto = false;
-            } else if (maxRollWidth > 0 && item.width > maxRollWidth) {
-                panels = Math.ceil(item.width / maxRollWidth); dim = 'width'; auto = true;
-            }
-            if (panels && panels >= 2) {
-                const panelWidth = dim === 'width' ? item.width / panels : item.width;
-                const panelHeight = dim === 'height' ? item.height / panels : item.height;
-                nestingItems.push({ width: panelWidth, height: panelHeight, qty: item.qty * panels });
-                splitNotices.push({ origW: item.width, origH: item.height, qty: item.qty, panels, panelWidth, panelHeight, dim, auto });
-            } else {
-                nestingItems.push({ width: item.width, height: item.height, qty: item.qty });
+    // אורז יחד (shelf packing) מספר סוגי מידות על אותו רוחב גליל, כדי לנצל רוחב שלא נוצל ע"י פריט אחד.
+    // כל מדבקה יכולה להיות מסובבת ב-90° אם זה עוזר להתאמה, ומדבקות בגבהים שונים יכולות להשתלב יחד
+    // (המדף נקבע לפי הגובה של המדבקה הראשונה שפותחת אותו, ומדבקות נמוכות יותר משתלבות בו עם מעט בלאי גובה).
+    function shelfPackLength(pieces, rollWidth) {
+        if (!pieces.length || rollWidth <= 0) return 0;
+        let types = pieces.map(p => ({ width: p.width, height: p.height, remaining: p.qty })).filter(t => t.remaining > 0);
+        // ממיינים מהגדול לקטן (לפי הממד הגדול מבין רוחב/גובה) - אסטרטגיית FFDH קלאסית
+        types.sort((a, b) => Math.max(b.width, b.height) - Math.max(a.width, a.height));
+
+        let shelves = []; // { height, remainingWidth }
+
+        types.forEach(t => {
+            let guard = 0;
+            while (t.remaining > 0 && guard < 100000) {
+                guard++;
+                // כיווני הנחה תקפים (כאלה שנכנסים ברוחב הגליל) - כולל האפשרות לסבב 90°
+                let orientations = [];
+                if (t.width <= rollWidth) orientations.push({ pw: t.width, ph: t.height });
+                if (t.height !== t.width && t.height <= rollWidth) orientations.push({ pw: t.height, ph: t.width });
+                if (orientations.length === 0) { t.remaining = 0; break; } // לא נכנס בגליל הזה בשום כיוון
+
+                // מחפשים מדף קיים עם הכי פחות בלאי גובה שמתאים לאחת מהאוריינטציות
+                let bestShelf = null, bestOrientation = null, bestWaste = Infinity;
+                shelves.forEach(shelf => {
+                    orientations.forEach(o => {
+                        if (o.ph <= shelf.height && o.pw <= shelf.remainingWidth) {
+                            const waste = shelf.height - o.ph;
+                            if (waste < bestWaste) { bestWaste = waste; bestShelf = shelf; bestOrientation = o; }
+                        }
+                    });
+                });
+
+                if (bestShelf) {
+                    const count = Math.min(t.remaining, Math.floor(bestShelf.remainingWidth / bestOrientation.pw));
+                    bestShelf.remainingWidth -= count * bestOrientation.pw;
+                    t.remaining -= count;
+                } else {
+                    // פותחים מדף חדש - בוחרים את האוריינטציה עם הגובה הנמוך יותר כדי לצמצם בלאי עתידי
+                    const o = orientations.slice().sort((a, b) => a.ph - b.ph)[0];
+                    const newShelf = { height: o.ph, remainingWidth: rollWidth };
+                    const count = Math.min(t.remaining, Math.floor(newShelf.remainingWidth / o.pw));
+                    newShelf.remainingWidth -= count * o.pw;
+                    t.remaining -= count;
+                    shelves.push(newShelf);
+                }
             }
         });
-        return { nestingItems, splitNotices };
+
+        return shelves.reduce((sum, s) => sum + s.height, 0);
     }
 
     function calculateGroupPrice() {
         const selectedGroup = document.getElementById('material-select').value;
         const box = document.getElementById('opt-box');
         if(localGroupSizes.length === 0) { box.innerHTML = "<strong>המלצת ניצול חומר לקבוצה:</strong> הוסף מידות כדי קבל ניתוח פריסה מדויק."; return; }
-        let netSqmSum = 0; let totalItemsCount = 0; let descLines = [];
-        localGroupSizes.forEach(item => { netSqmSum += item.sqm; totalItemsCount += item.qty; descLines.push(`${(item.width*100).toFixed(0)}x${(item.height*100).toFixed(0)}ס"מ (${item.qty} יח')`); });
-        const groupData = materialGroups.find(g => g.id === selectedGroup); let simulationResults = [];
+        const groupData = materialGroups.find(g => g.id === selectedGroup);
         const maxRollWidthAvailable = groupData.rolls.length ? Math.max(...groupData.rolls.map(r => r.width)) : 0;
-        const { nestingItems, splitNotices } = splitOversizedItemsForNesting(localGroupSizes, maxRollWidthAvailable);
-        groupData.rolls.forEach((roll, idx) => {
+
+        // קוראים את הגדרות כל הגלילים פעם אחת
+        const rollConfigs = groupData.rolls.map((roll, idx) => {
             const inputKey = `${selectedGroup}_${idx}`;
             const elLen = document.getElementById(`len-${inputKey}`);
             const elCost = document.getElementById(`cost-${inputKey}`);
-            const currentLen = elLen ? parseFloat(elLen.value) : roll.length;
-            const currentCost = elCost ? parseFloat(elCost.value) : roll.cost;
-            let sim = runNestingSimulation(roll.width, currentLen, currentCost, netSqmSum, nestingItems);
-            if (sim) simulationResults.push({ width: roll.width, retailM2: (document.getElementById(`retail-${inputKey}`) ? parseFloat(document.getElementById(`retail-${inputKey}`).value) : roll.retailM2), ...sim });
+            const elRetail = document.getElementById(`retail-${inputKey}`);
+            const length = elLen ? parseFloat(elLen.value) : roll.length;
+            const cost = elCost ? parseFloat(elCost.value) : roll.cost;
+            return { width: roll.width, length, cost, retailM2: elRetail ? parseFloat(elRetail.value) : roll.retailM2, linearCost: length > 0 ? cost / length : 0 };
+        }).filter(rc => rc.width > 0 && rc.length > 0);
+
+        if (rollConfigs.length === 0) { box.innerHTML = "⚠️ אין גלילים זמינים עבור חומר זה."; currentGroupTotals = { cost: 9999, retailPreVat: 0 }; return; }
+
+        let netSqmSum = 0, totalItemsCount = 0, descLines = [];
+        let pieces = [];
+        localGroupSizes.forEach(item => {
+            netSqmSum += item.sqm; totalItemsCount += item.qty;
+            const split = resolveItemSplit(item, maxRollWidthAvailable);
+            let descLine = `${(item.width*100).toFixed(0)}x${(item.height*100).toFixed(0)}ס"מ (${item.qty} יח')`;
+            if (split.willSplit) descLine += ` [פוצל ל-${split.panels} רצועות של ${(split.nestW*100).toFixed(0)}×${(split.nestH*100).toFixed(0)} ס"מ]`;
+            descLines.push(descLine);
+            pieces.push({ item, split, nestW: split.nestW, nestH: split.nestH, nestQty: split.nestQty });
         });
-        if (simulationResults.length === 0) { box.innerHTML = "⚠️ חריגה מרוחב מכונה! (הפריט חורג גם אחרי הפיצול)"; currentGroupTotals = { cost: 9999, retailPreVat: 0 }; return; }
-        let bestOption = [...simulationResults].sort((a, b) => a.calculatedCost - b.calculatedCost)[0];
-        let splitHtml = '';
-        if (splitNotices.length > 0) {
-            splitHtml = splitNotices.map(sn => {
-                const dimLabel = sn.dim === 'width' ? 'רוחב' : 'אורך/גובה';
-                const reason = sn.auto
-                    ? `הרוחב חורג מרוחב כל הגלילים הזמינים (מקס' ${(maxRollWidthAvailable*100).toFixed(0)} ס"מ) — פוצלה אוטומטית`
-                    : `פוצלה לפי בחירה ידנית (${dimLabel})`;
-                return `<div style="margin-bottom:6px;padding:8px;border-radius:8px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.35);color:#facc15;font-size:13px;">📐 <strong>פיצול${sn.auto ? ' אוטומטי' : ' ידני'}:</strong> המידה ${(sn.origW*100).toFixed(0)}×${(sn.origH*100).toFixed(0)} ס"מ (${sn.qty} יח') — ${reason} ל-${sn.panels} רצועות שוות של ${(sn.panelWidth*100).toFixed(0)}×${(sn.panelHeight*100).toFixed(0)} ס"מ שיודבקו זו לצד זו.</div>`;
-            }).join('');
-        }
-        let comparisonHtml = `📋 <strong>ניתוח פחת והמלצת הדפסה:</strong><br><div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:5px;">`;
-        simulationResults.forEach(opt => { let isBest = opt.width === bestOption.width; comparisonHtml += `<div style="padding:8px; border-radius:8px; border:1px solid ${isBest ? 'rgba(34,197,94,0.3)':'rgba(255,255,255,0.05)'}; background:${isBest ? 'rgba(34,197,94,0.1)':'rgba(15,23,42,0.4)'}">גליל ${opt.width} מ': פחת ${opt.wastePercent.toFixed(1)}% (${opt.wasteSqm.toFixed(2)} מ"ר)</div>`; });
-        box.innerHTML = splitHtml + comparisonHtml + `</div>`;
-        if (splitNotices.length > 0) {
-            descLines = descLines.map(line => {
-                const match = splitNotices.find(sn => line.startsWith(`${(sn.origW*100).toFixed(0)}x${(sn.origH*100).toFixed(0)}ס"מ`));
-                return match ? `${line} [פוצל ל-${match.panels} רצועות של ${(match.panelWidth*100).toFixed(0)}×${(match.panelHeight*100).toFixed(0)} ס"מ]` : line;
+
+        // בודקים כל גליל כמועמד "גליל שילוב" ראשי: כל מה שנכנס בו (בכל כיוון) משולב יחד (shelf packing),
+        // וכל מה שלא נכנס בו בשום כיוון (רחב מדי) מקבל בנפרד את הגליל הזול ביותר שבו הוא כן נכנס.
+        // בוחרים את המועמד עם העלות הכוללת הנמוכה ביותר.
+        const fitsRoll = (p, rollWidth) => p.nestW <= rollWidth || p.nestH <= rollWidth;
+        let bestPlan = null;
+        rollConfigs.forEach(primaryRoll => {
+            const fitting = pieces.filter(p => fitsRoll(p, primaryRoll.width));
+            const notFitting = pieces.filter(p => !fitsRoll(p, primaryRoll.width));
+            if (fitting.length === 0) return;
+
+            const combinedLength = shelfPackLength(fitting.map(p => ({ width: p.nestW, height: p.nestH, qty: p.nestQty })), primaryRoll.width);
+            const combinedCost = combinedLength * primaryRoll.linearCost;
+
+            let notFittingTotalCost = 0; let notFittingAssignment = []; let notFittingFailed = false;
+            notFitting.forEach(p => {
+                let options = [];
+                rollConfigs.forEach(rc => {
+                    if (fitsRoll(p, rc.width)) {
+                        const len = shelfPackLength([{ width: p.nestW, height: p.nestH, qty: p.nestQty }], rc.width);
+                        options.push({ roll: rc, length: len, cost: len * rc.linearCost });
+                    }
+                });
+                if (options.length === 0) { notFittingFailed = true; return; }
+                const best = options.sort((a, b) => a.cost - b.cost)[0];
+                notFittingTotalCost += best.cost;
+                notFittingAssignment.push({ piece: p, roll: best.roll, length: best.length });
             });
+            if (notFittingFailed) return;
+
+            const totalCost = combinedCost + notFittingTotalCost;
+            if (!bestPlan || totalCost < bestPlan.totalCost) {
+                bestPlan = { primaryRoll, fitting, combinedLength, combinedCost, notFittingAssignment, notFittingTotalCost, totalCost };
+            }
+        });
+
+        if (!bestPlan) {
+            box.innerHTML = `⚠️ חריגה מרוחב מכונה: מידה אחת או יותר לא נכנסת באף גליל זמין, גם אחרי פיצול. אפשר לשנות את הפיצול בטבלת המידות.`;
+            currentGroupTotals = { cost: 9999, retailPreVat: 0 };
+            return;
         }
 
-        let productionCost = bestOption.calculatedCost; let retailPrice = netSqmSum * bestOption.retailM2; let addonsList = [];
+        let productionCost = bestPlan.combinedCost + bestPlan.notFittingTotalCost;
+        let retailPrice = 0;
+        bestPlan.fitting.forEach(p => { retailPrice += p.item.sqm * bestPlan.primaryRoll.retailM2; });
+        bestPlan.notFittingAssignment.forEach(na => { retailPrice += na.piece.item.sqm * na.roll.retailM2; });
+
+        // תצוגה
+        let boxHtml = `📋 <strong>ניתוח פריסה ושילוב מדבקות:</strong><br><div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">`;
+        const splitPieces = pieces.filter(p => p.split.willSplit);
+        if (splitPieces.length > 0) {
+            splitPieces.forEach(p => {
+                boxHtml += `<div style="padding:6px 8px;border-radius:8px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.3);color:#facc15;font-size:12px;">✂️ ${(p.item.width*100).toFixed(0)}×${(p.item.height*100).toFixed(0)} ס"מ פוצלה ל-${p.split.panels} חלקים (${p.split.dim === 'width' ? 'רוחב' : 'גובה'})${p.split.auto ? ' — אוטומטי' : ' — ידני'}</div>`;
+            });
+        }
+        boxHtml += `<div style="padding:8px;border-radius:8px;border:1px solid rgba(34,197,94,0.3);background:rgba(34,197,94,0.08);font-size:13px;">🧩 <strong>שילוב על גליל ${bestPlan.primaryRoll.width} מ':</strong> ${bestPlan.fitting.length} סוג/י מידה שולבו יחד באותה הדפסה — אורך נדרש: ${bestPlan.combinedLength.toFixed(2)} מ'.</div>`;
+        bestPlan.notFittingAssignment.forEach(na => {
+            boxHtml += `<div style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(15,23,42,0.4);font-size:13px;">${(na.piece.item.width*100).toFixed(0)}×${(na.piece.item.height*100).toFixed(0)} ס"מ (${na.piece.item.qty} יח') — רחבה מדי לגליל המשולב, קיבלה גליל נפרד: <strong>${na.roll.width} מ'</strong> (אורך ${na.length.toFixed(2)} מ').</div>`;
+        });
+        boxHtml += `</div>`;
+        box.innerHTML = boxHtml;
+
+        let addonsList = [];
         let addonsRaw = {
             contour: { checked: document.getElementById('add-contour').checked, val: parseFloat(document.getElementById('custom-retail-contour').value) || 0 },
             rings: { checked: document.getElementById('add-rings').checked, qty: parseInt(document.getElementById('rings-qty').value) || 0, val: parseFloat(document.getElementById('custom-retail-rings').value) || 0 },
