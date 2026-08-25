@@ -2,13 +2,15 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>דפוס שלוש</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e293b">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="דפוס שלוש">
+    <meta name="format-detection" content="telephone=no">
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -35,15 +37,25 @@
             --shadow-glow: 0 10px 25px rgba(37,99,235,0.25);
         }
 
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html {
+            scroll-behavior: smooth;
+        }
 
         body {
             font-family: 'Rubik', 'Segoe UI', sans-serif;
             background: var(--bg);
             margin: 0;
             padding: 20px;
+            padding-top: calc(20px + env(safe-area-inset-top));
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            padding-left: calc(20px + env(safe-area-inset-left));
+            padding-right: calc(20px + env(safe-area-inset-right));
             color: var(--text);
             line-height: 1.6;
+            touch-action: manipulation;
+            overscroll-behavior-y: contain;
         }
 
         .container {
@@ -85,13 +97,16 @@
             font-weight: 600;
             color: var(--text-muted);
             border-radius: 12px;
-            transition: all 0.25s ease;
+            transition: all 0.15s ease;
             font-family: inherit;
+            min-height: 46px;
+            touch-action: manipulation;
         }
         .tab-button:hover {
             color: var(--text);
             background: rgba(255,255,255,0.05);
         }
+        .tab-button:active { transform: scale(0.98); }
         .tab-button.active {
             background: var(--primary);
             color: #fff;
@@ -225,11 +240,13 @@
             border: 1px solid #334155;
             border-radius: 12px;
             box-sizing: border-box;
-            font-size: 14px;
+            font-size: 16px;
             font-family: inherit;
             background: var(--input);
             color: var(--text);
             transition: all 0.25s ease;
+            min-height: 46px;
+            touch-action: manipulation;
         }
         input:focus, select:focus, textarea:focus {
             border-color: var(--border-focus);
@@ -363,13 +380,19 @@
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            transition: all 0.25s ease;
+            transition: all 0.15s ease;
             box-shadow: 0 8px 20px rgba(34,197,94,0.25);
             font-family: inherit;
+            min-height: 44px;
+            touch-action: manipulation;
         }
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 12px 28px rgba(34,197,94,0.35);
+        }
+        .btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 4px 10px rgba(34,197,94,0.3);
         }
         .btn-blue {
             background: linear-gradient(135deg, var(--primary), var(--primary-hover));
@@ -389,14 +412,17 @@
             cursor: pointer;
             border-radius: var(--radius);
             font-weight: 700;
-            transition: all 0.25s ease;
+            transition: all 0.15s ease;
             box-shadow: var(--shadow-glow);
             font-family: inherit;
+            min-height: 50px;
+            touch-action: manipulation;
         }
         .btn-add-global:hover {
             transform: translateY(-2px);
             box-shadow: 0 14px 30px rgba(37,99,235,0.4);
         }
+        .btn-add-global:active { transform: scale(0.98); }
         .btn-danger {
             background: linear-gradient(135deg, var(--danger), var(--danger-hover));
             padding: 6px 14px;
@@ -405,10 +431,13 @@
             border: none;
             border-radius: 10px;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.15s ease;
             box-shadow: 0 6px 16px rgba(239,68,68,0.2);
+            min-height: 36px;
+            touch-action: manipulation;
         }
         .btn-danger:hover { transform: translateY(-1px); }
+        .btn-danger:active { transform: scale(0.96); }
         .btn-warning {
             background: linear-gradient(135deg, var(--warning), var(--warning-hover));
             padding: 6px 14px;
@@ -418,9 +447,12 @@
             border: none;
             border-radius: 10px;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.15s ease;
+            min-height: 36px;
+            touch-action: manipulation;
         }
         .btn-warning:hover { transform: translateY(-1px); }
+        .btn-warning:active { transform: scale(0.96); }
 
         /* === ACCORDION (material rolls) === */
         .accordion-row {
@@ -538,10 +570,62 @@
         /* === RESPONSIVE === */
         @media (max-width: 768px) {
             .row { flex-direction: column; gap: 8px; }
-            .tabs { flex-direction: column; }
+            .tabs { flex-direction: row; }
             .settings-menu { flex-direction: column; }
-            body { padding: 10px; }
-            .container { padding: 16px; border-radius: 16px; }
+            body { padding: 0; }
+            .container {
+                max-width: 100%;
+                padding: 14px;
+                padding-bottom: calc(14px + env(safe-area-inset-bottom));
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+                min-height: 100vh;
+            }
+            h1 { font-size: 20px; }
+            h2 { font-size: 17px; }
+            h3 { font-size: 15px; }
+
+            /* טאבים דביקים בראש המסך - כמו סרגל ניווט של אפליקציה */
+            .tabs {
+                position: sticky;
+                top: 0;
+                z-index: 50;
+                margin: -14px -14px 16px -14px;
+                border-radius: 0;
+                padding: calc(8px + env(safe-area-inset-top)) 8px 8px 8px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+            }
+            .tab-button { font-size: 13px; padding: 10px 8px; }
+
+            /* טבלאות - פונט וריווח קומפקטיים יותר, גלילה חלקה */
+            .table-responsive {
+                -webkit-overflow-scrolling: touch;
+                margin-left: -14px; margin-right: -14px;
+                padding-left: 14px; padding-right: 14px;
+                width: calc(100% + 28px);
+            }
+            th, td { padding: 8px; font-size: 12.5px; }
+
+            /* כפתורי פעולה בטבלאות - מרוכזים ונוחים למגע */
+            .btn-danger, .btn-warning { padding: 8px 12px; }
+
+            /* תיבות תוצאה ואופטימיזציה - פחות ריפוד בצדדים */
+            .optimization-box, .inner-block, .section-block, .results {
+                padding: 14px;
+                border-radius: var(--radius);
+            }
+
+            /* select/inputs - מרווח נוח יותר בעמודה יחידה */
+            .col { width: 100%; }
+
+            /* מונע גלישה אופקית של כל העמוד */
+            .job-selector-zone { padding: 14px; }
+        }
+
+        /* התאמה לאייפונים עם notch/Dynamic Island */
+        @supports (padding: max(0px)) {
+            .tabs { padding-top: max(8px, env(safe-area-inset-top)); }
         }
 
         /* === PRINT === */
@@ -2462,6 +2546,7 @@
 
     let localGroupSizes = []; 
     let globalOrderItems = []; 
+    let editingQuoteId = null; // מזהה ההצעה השמורה שנטענה לעריכה, אם יש
     let currentNotebookTotals = { cost: 0, retailPreVat: 0 };
     let currentGroupTotals = { cost: 0, retailPreVat: 0 };
     let currentStampTotals = { cost: 0, retailPreVat: 0 };
@@ -2999,8 +3084,8 @@
         unitH = unitH || unitHb;
         // אם requestedQty לא הועבר — הצג את כולם (ברירת מחדל)
         const activeCount = (requestedQty > 0) ? Math.min(requestedQty, totalUnits) : totalUnits;
-        const bleedW = (unitWb - unitW) / 2;
-        const bleedH = (unitHb - unitH) / 2;
+        let bleedW = (unitWb - unitW) / 2;
+        let bleedH = (unitHb - unitH) / 2;
 
         const svgW = 220, svgH = Math.round(220 * sheetH / sheetW);
         const margin = 6; // שוליים חיצוניים בפיקסלים
@@ -3067,7 +3152,31 @@
         });
 
         // חשב bounding box של הסידור
-        if (bestLayout.length === 0) return '';
+        let bleedReduced = false;
+        if (bestLayout.length === 0) {
+            // שום דבר לא נכנס עם השוליים לחיתוך - ננסה שוב בלי שוליים (בדיוק כמו שהתמחור כבר מניח שלפחות יחידה אחת נכנסת)
+            best = 0; bestLayout = [];
+            tryLayout([{ x:0, y:0, w:sheetW, h:sheetH, uw:unitW, uh:unitH, rotated:false }]);
+            tryLayout([{ x:0, y:0, w:sheetW, h:sheetH, uw:unitH, uh:unitW, rotated:true }]);
+            for (let x = unitW; x < sheetW - unitH + 1; x += unitW) {
+                tryLayout([
+                    { x:0, y:0, w:x, h:sheetH, uw:unitW, uh:unitH, rotated:false },
+                    { x:x, y:0, w:sheetW-x, h:sheetH, uw:unitH, uh:unitW, rotated:true }
+                ]);
+            }
+            for (let y = unitH; y < sheetH - unitW + 1; y += unitH) {
+                tryLayout([
+                    { x:0, y:0, w:sheetW, h:y, uw:unitW, uh:unitH, rotated:false },
+                    { x:0, y:y, w:sheetW, h:sheetH-y, uw:unitH, uh:unitW, rotated:true }
+                ]);
+            }
+            if (bestLayout.length > 0) {
+                bleedReduced = true;
+                unitWb = unitW; unitHb = unitH; // מציירים בלי מרווח שוליים בפועל
+                bleedW = 0; bleedH = 0;
+            }
+        }
+        if (bestLayout.length === 0) return `<div style="margin-top:10px;text-align:center;font-size:12px;color:#f87171;">⚠️ גודל ההדפסה גדול מדי לגליון הנבחר (${sheetW}×${sheetH} ס"מ) — גם ללא שוליים לחיתוך.</div>`;
         const minX = Math.min(...bestLayout.map(r => r.x));
         const minY = Math.min(...bestLayout.map(r => r.y));
         const maxX = Math.max(...bestLayout.map(r => r.x + r.w));
@@ -3100,6 +3209,7 @@
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">
                 סרטוט פריסה (${sheetW}×${sheetH} ס"מ) – ${activeCount} מודפסות מתוך ${best} בדף
                 ${bleedW > 0 ? `| שוליים ${(bleedW*10).toFixed(1)} מ"מ` : ''}
+                ${bleedReduced ? '<br><span style="color:#facc15;">⚠️ אין מקום לשוליים לחיתוך בגודל הזה על הגליון - הפריסה מוצגת ללא שוליים</span>' : ''}
                 <span style="color:#3b82f6;">■</span> עמידה 
                 <span style="color:#6366f1;">■</span> שכיבה
             </div>
@@ -4469,6 +4579,7 @@
         if(confirm("האם למחוק את כל הצעת המחיר?")) { 
             globalOrderItems = []; 
             localGroupSizes = []; 
+            editingQuoteId = null; // הצעה הבאה שתישמר תהיה הצעה חדשה
             document.getElementById('client-name').value = "";
             document.getElementById('client-phone').value = "";
             document.getElementById('client-notes').value = 'המחירים אינם כוללים מע"מ (יתווסף כחוק בשורת הסיכום).\nתוקף הצעת המחיר הנו ל-30 יום ממועד הפקתה.\nביצוע העבודה מותנה באישור חתום של המפרט והגרפיקה הסופית.';
@@ -4558,12 +4669,12 @@
             container.appendChild(mainTr);
 
             const panelTr = document.createElement('tr'); panelTr.id = `panel-${group.id}`; panelTr.className = "sub-panel";
-            let innerTableHtml = `<td colspan="2"><table class="inner-settings-table"><thead><tr><th>רוחב גליל</th><th>אורך (מ')</th><th>עלות גליל (₪)</th><th>מכירה למ\"ר (₪)</th><th>עלות מחושבת</th></tr></thead><tbody>`;
+            let innerTableHtml = `<td colspan="2"><div class="table-responsive"><table class="inner-settings-table" style="min-width:540px;"><thead><tr><th>רוחב גליל</th><th>אורך (מ')</th><th>עלות גליל (₪)</th><th>מכירה למ\"ר (₪)</th><th>עלות מחושבת</th></tr></thead><tbody>`;
             group.rolls.forEach((roll, idx) => {
                 const inputKey = `${group.id}_${idx}`;
-                innerTableHtml += `<tr><td><strong>${roll.width} מטר</strong></td><td><input type="number" id="len-${inputKey}" value="${roll.length}" oninput="recalcInnerM2('${group.id}', ${idx}); calculateGroupPrice();"></td><td><input type="number" id="cost-${inputKey}" value="${roll.cost}" oninput="recalcInnerM2('${group.id}', ${idx}); calculateGroupPrice();"></td><td><input type="number" id="retail-${inputKey}" value="${roll.retailM2}" oninput="calculateGroupPrice();"></td><td><span id="badge-${inputKey}" style="background:rgba(34,197,94,0.15); color:#4ade80; padding:2px 8px; border-radius:6px;">₪ ${(roll.cost / (roll.width * roll.length)).toFixed(1)}</span></td></tr>`;
+                innerTableHtml += `<tr><td><strong>${roll.width} מטר</strong></td><td><input type="number" id="len-${inputKey}" value="${roll.length}" style="min-width:80px;" oninput="recalcInnerM2('${group.id}', ${idx}); calculateGroupPrice();"></td><td><input type="number" id="cost-${inputKey}" value="${roll.cost}" style="min-width:80px;" oninput="recalcInnerM2('${group.id}', ${idx}); calculateGroupPrice();"></td><td><input type="number" id="retail-${inputKey}" value="${roll.retailM2}" style="min-width:80px;" oninput="calculateGroupPrice();"></td><td><span id="badge-${inputKey}" style="background:rgba(34,197,94,0.15); color:#4ade80; padding:2px 8px; border-radius:6px; white-space:nowrap;">₪ ${(roll.cost / (roll.width * roll.length)).toFixed(1)}</span></td></tr>`;
             });
-            innerTableHtml += `</tbody></table></td>`; panelTr.innerHTML = innerTableHtml; container.appendChild(panelTr);
+            innerTableHtml += `</tbody></table></div></td>`; panelTr.innerHTML = innerTableHtml; container.appendChild(panelTr);
         });
     }
 
@@ -5030,14 +5141,16 @@
         // קבל את תוכן ה-HTML של ההצעה
         const quoteHTML = document.getElementById('quote-results-box').innerHTML;
 
+        // אם זו הצעה שנטענה לעריכה (ועדיין קיימת ברשימה) - נעדכן אותה במקום ליצור הצעה חדשה
+        const existing = editingQuoteId ? savedQuotes.find(q => q.id === editingQuoteId) : null;
         const quote = {
-            id: Date.now(),
-            num: generateQuoteNumber(),
+            id: existing ? existing.id : Date.now(),
+            num: existing ? existing.num : generateQuoteNumber(),
             name,
             phone,
             date,
             price,
-            status: 'pending',
+            status: existing ? existing.status : 'pending',
             quoteHTML,
             globalOrderItems: JSON.parse(JSON.stringify(globalOrderItems)),
             discountValue: document.getElementById('discount-value').value,
@@ -5045,7 +5158,13 @@
             discountTiming: document.getElementById('discount-timing').value
         };
 
-        savedQuotes.unshift(quote);
+        if (existing) {
+            const idx = savedQuotes.findIndex(q => q.id === existing.id);
+            savedQuotes[idx] = quote;
+        } else {
+            savedQuotes.unshift(quote);
+        }
+        editingQuoteId = quote.id; // שמירות נוספות ברצף יעדכנו את אותה הצעה
         saveQuotesToStorage();
         sbSaveQuote(quote);
         renderQuotesList();
@@ -5053,7 +5172,7 @@
         // הודעה קצרה
         const btn = event.target;
         const orig = btn.textContent;
-        btn.textContent = '✅ נשמר!';
+        btn.textContent = existing ? '✅ עודכן!' : '✅ נשמר!';
         setTimeout(() => btn.textContent = orig, 2000);
     }
 
@@ -5118,6 +5237,8 @@
         if (!q) return;
         if (!confirm(`לטעון הצעה ${q.num} עבור ${q.name}?`)) return;
 
+        editingQuoteId = id; // שמירה הבאה תעדכן את ההצעה הזו במקום ליצור חדשה
+
         document.getElementById('client-name').value = q.name;
         document.getElementById('client-phone').value = q.phone || '';
         document.getElementById('client-date').value = q.date || '';
@@ -5144,6 +5265,7 @@
     function deleteQuote(id) {
         if (!confirm('למחוק הצעה זו?')) return;
         savedQuotes = savedQuotes.filter(q => q.id !== id);
+        if (editingQuoteId === id) editingQuoteId = null;
         saveQuotesToStorage();
         sbDeleteQuote(id);
         renderQuotesList();
