@@ -2140,10 +2140,6 @@
                     <label>מחיר קליק שח-לב B4 (₪):</label>
                     <input type="number" id="sett-chem-click-cost-b4" value="0.07" step="0.01" oninput="calculateChemicalNotebookPrice()">
                 </div>
-                <div class="col form-group">
-                    <label>תוספת דבק/סיכות לפנקס (₪):</label>
-                    <input type="number" id="sett-chem-fixed-binding" value="1.50" step="0.10" oninput="calculateChemicalNotebookPrice()">
-                </div>
             </div>
 
             <h4 class="settings-sub-title">2. עלות דף נייר כימי A4 לפי צבע + כריכה</h4>
@@ -4320,7 +4316,6 @@
         const isB4 = (sheetSize === 'B4');
         const costClickBW = isB4 ? getChemVal('sett-chem-click-cost-b4', 0.07) : getChemVal('sett-chem-click-cost', 0.05);
         const costManilaCover = isB4 ? getChemVal('sett-chem-manila-cost-b4', 0.35) : getChemVal('sett-chem-manila-cost', 0.25);
-        const costFixedBinding = getChemVal('sett-chem-fixed-binding', 1.50);
 
         const suffix = isB4 ? '-b4' : '';
         const cWhite = getChemVal('sett-chem-cost-white' + suffix, 0.12);
@@ -4383,9 +4378,8 @@
             coverDescription = `כריכה קד+אח (${manilaSheets} דפי מנילה + ${frontSheets} קליקי הדפסה)`;
         }
 
-        const finalBindingCost = notebookCount * costFixedBinding;
         const totalExtraCost = notebookCount * extraCost;
-        const totalCostOfProduction = finalClicksCost + totalPaperCost + finalCoversCost + coverClicksCost + finalBindingCost + totalExtraCost;
+        const totalCostOfProduction = finalClicksCost + totalPaperCost + finalCoversCost + coverClicksCost + totalExtraCost;
 
         if (!userManuallyChangedRetail) {
             if (tierMatch) {
@@ -4859,7 +4853,7 @@
         });
         localStorage.setItem('stampDatabase', JSON.stringify(stampDatabase));
 
-        ['sett-chem-click-cost','sett-chem-manila-cost','sett-chem-fixed-binding',
+        ['sett-chem-click-cost','sett-chem-manila-cost',
          'sett-chem-cost-white','sett-chem-cost-yellow','sett-chem-cost-pink','sett-chem-cost-blue',
          'sett-chem-click-cost-b4','sett-chem-cost-white-b4','sett-chem-cost-yellow-b4',
          'sett-chem-cost-pink-b4','sett-chem-cost-blue-b4','sett-chem-manila-cost-b4',
@@ -4869,7 +4863,6 @@
         });
         localStorage.setItem('chemClickCost', document.getElementById('sett-chem-click-cost')?.value || localStorage.getItem('chemClickCost') || '');
         localStorage.setItem('chemManilaCost', document.getElementById('sett-chem-manila-cost')?.value || localStorage.getItem('chemManilaCost') || '');
-        localStorage.setItem('chemFixedBinding', document.getElementById('sett-chem-fixed-binding')?.value || localStorage.getItem('chemFixedBinding') || '');
         localStorage.setItem('chemCostWhite', document.getElementById('sett-chem-cost-white')?.value || localStorage.getItem('chemCostWhite') || '');
         localStorage.setItem('chemCostYellow', document.getElementById('sett-chem-cost-yellow')?.value || localStorage.getItem('chemCostYellow') || '');
         localStorage.setItem('chemCostPink', document.getElementById('sett-chem-cost-pink')?.value || localStorage.getItem('chemCostPink') || '');
@@ -4977,7 +4970,6 @@
 
         if(localStorage.getItem('chemClickCost')) document.getElementById('sett-chem-click-cost').value = localStorage.getItem('chemClickCost');
         if(localStorage.getItem('chemManilaCost')) document.getElementById('sett-chem-manila-cost').value = localStorage.getItem('chemManilaCost');
-        if(localStorage.getItem('chemFixedBinding')) document.getElementById('sett-chem-fixed-binding').value = localStorage.getItem('chemFixedBinding');
         
         if(localStorage.getItem('chemCostWhite')) document.getElementById('sett-chem-cost-white').value = localStorage.getItem('chemCostWhite');
         if(localStorage.getItem('chemCostYellow')) document.getElementById('sett-chem-cost-yellow').value = localStorage.getItem('chemCostYellow');
@@ -5527,7 +5519,6 @@
                 clickCost: document.getElementById('sett-chem-click-cost').value,
                 clickCostB4: document.getElementById('sett-chem-click-cost-b4').value,
                 manilaCost: document.getElementById('sett-chem-manila-cost').value,
-                fixedBinding: document.getElementById('sett-chem-fixed-binding').value,
                 costWhite: document.getElementById('sett-chem-cost-white').value,
                 costYellow: document.getElementById('sett-chem-cost-yellow').value,
                 costPink: document.getElementById('sett-chem-cost-pink').value,
@@ -5603,7 +5594,6 @@
                     if(importedData.chemicalNotebooks.clickCost) document.getElementById('sett-chem-click-cost').value = importedData.chemicalNotebooks.clickCost;
                     if(importedData.chemicalNotebooks.clickCostB4) document.getElementById('sett-chem-click-cost-b4').value = importedData.chemicalNotebooks.clickCostB4;
                     if(importedData.chemicalNotebooks.manilaCost) document.getElementById('sett-chem-manila-cost').value = importedData.chemicalNotebooks.manilaCost;
-                    if(importedData.chemicalNotebooks.fixedBinding) document.getElementById('sett-chem-fixed-binding').value = importedData.chemicalNotebooks.fixedBinding;
                     if(importedData.chemicalNotebooks.costWhite) document.getElementById('sett-chem-cost-white').value = importedData.chemicalNotebooks.costWhite;
                     if(importedData.chemicalNotebooks.costYellow) document.getElementById('sett-chem-cost-yellow').value = importedData.chemicalNotebooks.costYellow;
                     if(importedData.chemicalNotebooks.costPink) document.getElementById('sett-chem-cost-pink').value = importedData.chemicalNotebooks.costPink;
